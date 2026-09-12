@@ -1,0 +1,9 @@
+{
+  "name": "@insurance/mock-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": { "busboy": "^1.6.0" },
+  "devDependencies": { "@types/busboy": "^1.5.4" }
+}

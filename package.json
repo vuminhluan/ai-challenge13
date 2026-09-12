@@ -1,0 +1,22 @@
+{
+  "name": "insurance-sdk-monorepo",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "pnpm --filter @insurance/sdk build",
+    "mock-server": "tsx packages/mock-server/src/index.ts",
+    "example:1": "tsx examples/01-simple-claim.ts",
+    "example:2": "tsx examples/02-claim-with-document.ts",
+    "example:3": "tsx examples/03-poll-status.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
