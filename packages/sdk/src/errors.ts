@@ -36,7 +36,8 @@ export class AuthError extends InsuranceSDKError {
 /** Không gọi được tới API, hoặc đã hết số lần thử lại. */
 export class NetworkError extends InsuranceSDKError {
   readonly attempts: number;
-  readonly cause: unknown;
+  /** Lỗi gốc từ tầng socket, nếu có. Ghi đè `Error.cause` của chuẩn ES2022. */
+  override readonly cause: unknown;
 
   constructor(message: string, attempts: number, code = 'NETWORK_ERROR', cause?: unknown) {
     super(message, code);
