@@ -1,30 +1,30 @@
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
-/** Một field dạng text trong body multipart. */
+/** A text field inside a multipart body. */
 export interface MultipartField {
   name: string;
   value: string;
 }
 
-/** Phần file trong body multipart. */
+/** The file part of a multipart body. */
 export interface MultipartFile {
   fieldName: string;
   filename: string;
   contentType: string;
   size: number;
-  /** Tạo một stream mới mỗi lần gọi, để retry gửi lại được. */
+  /** Creates a fresh stream on every call, so a retry can resend. */
   createStream: () => Readable;
 }
 
-/** Body multipart đã biết trước độ dài, nhờ vậy tính được phần trăm tiến độ. */
+/** A multipart body whose length is known up front, which is what makes a percentage possible. */
 export interface MultipartBody {
   contentType: string;
   contentLength: number;
   create: () => Readable;
 }
 
-/** Dựng body multipart/form-data và tính chính xác Content-Length. */
+/** Builds a multipart/form-data body and computes an exact Content-Length. */
 export function buildMultipart(
   fields: MultipartField[],
   file: MultipartFile,

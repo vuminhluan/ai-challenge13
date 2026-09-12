@@ -20,6 +20,6 @@ const config = defaultConfig({
 });
 
 createServer(config).listen(port, () => {
-  console.log(`Mock insurance API đang chạy tại http://localhost:${port}`);
+  console.log(`Mock insurance API listening on http://localhost:${port}`);
   console.log(`FAILURE_RATE=${config.failureRate} delay=${config.minDelayMs}-${config.maxDelayMs}ms`);
 });

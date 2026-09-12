@@ -13,7 +13,7 @@ import type {
 } from '../types.js';
 import { assertValid, validateCreateClaim } from '../validation.js';
 
-/** Các thao tác với hồ sơ bồi thường. */
+/** Operations on insurance claims. */
 export class ClaimsResource {
   protected readonly pipeline: RequestPipeline;
   protected readonly clock: Clock;
@@ -24,8 +24,8 @@ export class ClaimsResource {
   }
 
   /**
-   * Tạo một hồ sơ mới. Dữ liệu được kiểm tra tại client trước, nên input sai
-   * sẽ ném `ValidationError` mà không phát sinh request nào.
+   * Creates a claim. Input is validated on the client first, so bad data throws
+   * `ValidationError` without a single request being made.
    */
   async create(input: CreateClaimInput, options: RequestOptions = {}): Promise<Claim> {
     assertValid(validateCreateClaim(input, this.clock.now()), 'Invalid claim payload');
@@ -38,7 +38,7 @@ export class ClaimsResource {
     });
   }
 
-  /** Lấy chi tiết và trạng thái hiện tại của một hồ sơ. */
+  /** Fetches a claim with its current status. */
   async get(claimId: string, options: RequestOptions = {}): Promise<Claim> {
     assertValid(claimId === '' ? { claimId: 'required' } : {}, 'Invalid claim id');
     return this.pipeline.execute<Claim>({
@@ -48,7 +48,7 @@ export class ClaimsResource {
     });
   }
 
-  /** Liệt kê hồ sơ, có phân trang và lọc theo trạng thái. */
+  /** Lists claims, with pagination and status filtering. */
   async list(params: ListClaimsParams = {}, options: RequestOptions = {}): Promise<PaginatedResult<Claim>> {
     return this.pipeline.execute<PaginatedResult<Claim>>({
       method: 'GET',
@@ -59,10 +59,10 @@ export class ClaimsResource {
   }
 
   /**
-   * Theo dõi thay đổi trạng thái của một hồ sơ bằng cách poll định kỳ.
+   * Watches a claim for status changes by polling at a fixed interval.
    *
-   * Luôn gọi hàm trả về khi không cần theo dõi nữa: vòng poll giữ tiến trình
-   * Node sống, nên bỏ quên nó sẽ khiến script không bao giờ thoát.
+   * Always call the returned function once you are done: the polling loop keeps the
+   * Node process alive, so forgetting it means your script never exits.
    */
   onStatusChange(claimId: string, listener: StatusListener, options: WatchOptions = {}): Unsubscribe {
     return watchClaimStatus(

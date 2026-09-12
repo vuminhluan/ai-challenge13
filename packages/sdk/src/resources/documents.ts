@@ -14,17 +14,17 @@ const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
 };
 
-/** File đã được chuẩn hoá về dạng dựng lại được. */
+/** A file normalised into a re-creatable source. */
 export interface ResolvedFile {
   filename: string;
   contentType: string;
   size: number;
   createStream: () => Readable;
-  /** false khi nguồn là stream thô, vì stream đã đọc không tua lại được. */
+  /** false for a raw stream, because a consumed stream cannot be rewound. */
   retryable: boolean;
 }
 
-/** Chuẩn hoá Buffer, đường dẫn hoặc stream thành một nguồn thống nhất. */
+/** Normalises a Buffer, a path or a stream into one uniform source. */
 export async function resolveFileInput(
   file: FileInput,
   options: { filename?: string; contentType?: string },
@@ -63,7 +63,7 @@ export async function resolveFileInput(
   };
 }
 
-/** Các thao tác với tài liệu đính kèm hồ sơ. */
+/** Operations on documents attached to a claim. */
 export class DocumentsResource {
   private readonly pipeline: RequestPipeline;
 
@@ -72,9 +72,9 @@ export class DocumentsResource {
   }
 
   /**
-   * Upload một tài liệu cho hồ sơ. `file` nhận Buffer, đường dẫn file, hoặc
-   * `{ stream, size, filename }`. Với stream thô, SDK tắt retry vì stream đã đọc
-   * không tua lại được.
+   * Uploads a document against a claim. `file` accepts a Buffer, a file path, or
+   * `{ stream, size, filename }`. For a raw stream the SDK disables retries, because
+   * a consumed stream cannot be rewound.
    */
   async upload(claimId: string, file: FileInput, options: UploadOptions): Promise<ClaimDocument> {
     assertValid(claimId === '' ? { claimId: 'required' } : {}, 'Invalid claim id');
@@ -106,7 +106,7 @@ export class DocumentsResource {
     });
   }
 
-  /** Liệt kê tài liệu đã upload cho một hồ sơ. */
+  /** Lists the documents uploaded against a claim. */
   async list(claimId: string, options: RequestOptions = {}): Promise<ClaimDocument[]> {
     const result = await this.pipeline.execute<{ data: ClaimDocument[] }>({
       method: 'GET',

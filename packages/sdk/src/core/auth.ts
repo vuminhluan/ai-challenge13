@@ -1,12 +1,12 @@
 import type { Clock } from './clock.js';
 
-/** Token thô do endpoint auth trả về. */
+/** Raw token as returned by the auth endpoint. */
 export interface TokenResponse {
   accessToken: string;
   expiresAtMs: number;
 }
 
-/** Token kèm epoch để phát hiện ai đang cầm token cũ. */
+/** A token plus an epoch, so we can tell who is holding a stale one. */
 export interface Token extends TokenResponse {
   epoch: number;
 }
@@ -14,13 +14,13 @@ export interface Token extends TokenResponse {
 export interface AuthManagerOptions {
   requestToken: (signal?: AbortSignal) => Promise<TokenResponse>;
   clock: Clock;
-  /** Coi token là hết hạn sớm hơn thời điểm thật bấy nhiêu ms. Mặc định 60000. */
+  /** Treat the token as expired this many ms before it really is. Defaults to 60000. */
   skewMs?: number;
 }
 
 /**
- * Quản lý vòng đời JWT: cache, refresh chủ động trước khi hết hạn,
- * gộp nhiều lần refresh đồng thời thành một, và vô hiệu hoá theo epoch.
+ * Manages the JWT lifecycle: caching, refreshing ahead of expiry,
+ * collapsing concurrent refreshes into one, and epoch-based invalidation.
  */
 export class AuthManager {
   private readonly options: Required<AuthManagerOptions>;
@@ -32,7 +32,7 @@ export class AuthManager {
     this.options = { skewMs: 60_000, ...options };
   }
 
-  /** Trả về token còn hiệu lực, tự đi lấy mới nếu cần. */
+  /** Returns a valid token, fetching a fresh one when needed. */
   async getToken(signal?: AbortSignal): Promise<Token> {
     const current = this.token;
     if (current !== undefined && current.expiresAtMs - this.options.skewMs > this.options.clock.now()) {
@@ -56,8 +56,8 @@ export class AuthManager {
   }
 
   /**
-   * Vô hiệu hoá token, nhưng chỉ khi epoch truyền vào đúng bằng epoch hiện tại.
-   * Nhờ vậy nhiều request cùng gặp 401 không tạo ra chuỗi refresh dây chuyền.
+   * Invalidates the token, but only when the epoch passed in matches the current one.
+   * That is what stops many requests hitting 401 together from triggering a chain of refreshes.
    */
   invalidate(epoch: number): void {
     if (this.token?.epoch === epoch) this.token = undefined;

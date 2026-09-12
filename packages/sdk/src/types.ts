@@ -1,15 +1,15 @@
 import type { Readable } from 'node:stream';
 
-/** Trạng thái của một hồ sơ bồi thường. */
+/** Status of an insurance claim. */
 export type ClaimStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED';
 
-/** Trạng thái cuối, khi đã có quyết định. */
+/** Terminal statuses, once a decision has been made. */
 export type TerminalClaimStatus = Extract<ClaimStatus, 'APPROVED' | 'REJECTED'>;
 
-/** Loại hình điều trị của hồ sơ. */
+/** Treatment category of a claim. */
 export type ClaimType = 'OUTPATIENT' | 'INPATIENT' | 'DENTAL' | 'MATERNITY';
 
-/** Loại tài liệu đính kèm hồ sơ. */
+/** Type of a document attached to a claim. */
 export type DocumentType =
   | 'medical_receipt'
   | 'discharge_summary'
@@ -18,30 +18,30 @@ export type DocumentType =
   | 'id_document'
   | 'other';
 
-/** Dữ liệu cần có để tạo một hồ sơ mới. */
+/** Data required to create a new claim. */
 export interface CreateClaimInput {
-  /** Mã hợp đồng bảo hiểm, dạng POL-<số>. */
+  /** Policy identifier, shaped as POL-<digits>. */
   policyId: string;
-  /** Loại hình điều trị. */
+  /** Treatment category. */
   claimType: ClaimType;
-  /** Mã chẩn đoán ICD-10, ví dụ J06.9. */
+  /** ICD-10 diagnosis code, for example J06.9. */
   diagnosisCode: string;
-  /** Ngày điều trị theo định dạng YYYY-MM-DD, không được ở tương lai. */
+  /** Treatment date as YYYY-MM-DD. Must not be in the future. */
   treatmentDate: string;
-  /** Số tiền yêu cầu chi trả, lớn hơn 0, tối đa 2 chữ số thập phân. */
+  /** Amount claimed. Must be positive, with at most 2 decimal places. */
   amount: number;
-  /** Mã tiền tệ ISO 4217, ví dụ THB. */
+  /** ISO 4217 currency code, for example THB. */
   currency: string;
 }
 
-/** Một mốc trong lịch sử trạng thái của hồ sơ. */
+/** One entry in a claim's status history. */
 export interface StatusHistoryEntry {
   status: ClaimStatus;
-  /** Thời điểm theo ISO 8601. */
+  /** Timestamp in ISO 8601 format. */
   at: string;
 }
 
-/** Hồ sơ bồi thường trả về từ API. */
+/** A claim as returned by the API. */
 export interface Claim extends CreateClaimInput {
   id: string;
   status: ClaimStatus;
@@ -50,16 +50,16 @@ export interface Claim extends CreateClaimInput {
   updatedAt: string;
 }
 
-/** Bộ lọc khi liệt kê hồ sơ. */
+/** Filters for listing claims. */
 export interface ListClaimsParams {
   status?: ClaimStatus;
-  /** Trang bắt đầu từ 1. */
+  /** Page number, starting at 1. */
   page?: number;
-  /** Số bản ghi mỗi trang, tối đa 100. */
+  /** Records per page, capped at 100. */
   pageSize?: number;
 }
 
-/** Thông tin phân trang. */
+/** Pagination metadata. */
 export interface Pagination {
   page: number;
   pageSize: number;
@@ -67,13 +67,13 @@ export interface Pagination {
   totalPages: number;
 }
 
-/** Kết quả có phân trang. */
+/** A paginated result set. */
 export interface PaginatedResult<T> {
   data: T[];
   pagination: Pagination;
 }
 
-/** Tài liệu đã upload cho một hồ sơ. */
+/** A document uploaded against a claim. */
 export interface ClaimDocument {
   id: string;
   claimId: string;
@@ -84,72 +84,72 @@ export interface ClaimDocument {
   uploadedAt: string;
 }
 
-/** Chi tiết tiến độ upload. */
+/** Byte-level detail of upload progress. */
 export interface ProgressDetail {
   bytesSent: number;
   totalBytes: number;
 }
 
-/** Callback nhận tiến độ upload. */
+/** Callback that receives upload progress. */
 export type ProgressHandler = (percent: number, detail: ProgressDetail) => void;
 
-/** Nguồn file để upload: buffer, đường dẫn, hoặc stream kèm kích thước. */
+/** Upload source: a buffer, a file path, or a stream with its size. */
 export type FileInput =
   | Buffer
   | string
   | { stream: Readable; size: number; filename: string; contentType?: string };
 
-/** Tuỳ chọn cho mỗi lời gọi API. */
+/** Per-call options. */
 export interface RequestOptions {
-  /** Khoá idempotency tự đặt. Nếu bỏ trống, SDK tự sinh cho request POST. */
+  /** Your own idempotency key. Left out, the SDK generates one for POST requests. */
   idempotencyKey?: string;
   signal?: AbortSignal;
 }
 
-/** Tuỳ chọn khi upload tài liệu. */
+/** Options for uploading a document. */
 export interface UploadOptions extends RequestOptions {
   type: DocumentType;
   onProgress?: ProgressHandler;
-  /** Ghi đè tên file suy ra từ đường dẫn. */
+  /** Overrides the filename inferred from the path. */
   filename?: string;
-  /** Ghi đè content type suy ra từ đuôi file. */
+  /** Overrides the content type inferred from the extension. */
   contentType?: string;
 }
 
-/** Callback nhận thay đổi trạng thái. */
+/** Callback that receives status changes. */
 export type StatusListener = (newStatus: ClaimStatus, claim: Claim) => void;
 
-/** Tuỳ chọn khi theo dõi trạng thái. */
+/** Options for watching a claim's status. */
 export interface WatchOptions {
-  /** Khoảng cách giữa hai lần poll, mặc định 2000ms. */
+  /** Delay between polls, 2000ms by default. */
   intervalMs?: number;
-  /** Thời gian theo dõi tối đa, mặc định 300000ms. */
+  /** Maximum time to keep watching, 300000ms by default. */
   maxDurationMs?: number;
-  /** Trạng thái đã biết trước khi bắt đầu theo dõi. */
+  /** Status already known before watching starts. */
   initialStatus?: ClaimStatus;
   onError?: (error: unknown) => void;
 }
 
-/** Hàm dừng theo dõi. Gọi nhiều lần vẫn an toàn. */
+/** Stops the watcher. Safe to call more than once. */
 export type Unsubscribe = () => void;
 
-/** Logger tối giản để debug. */
+/** Minimal logger used for debug output. */
 export interface Logger {
   debug(message: string, meta?: Record<string, unknown>): void;
 }
 
-/** Cấu hình khởi tạo SDK. */
+/** Configuration passed when constructing the SDK. */
 export interface InsuranceSDKConfig {
   apiKey: string;
-  /** Mặc định 'sandbox'. */
+  /** Defaults to 'sandbox'. */
   environment?: 'sandbox' | 'production';
-  /** Timeout cho mỗi lần thử, mặc định 30000ms. */
+  /** Timeout per attempt, 30000ms by default. */
   timeout?: number;
-  /** Số lần thử lại tối đa, mặc định 3. */
+  /** Maximum number of retries, 3 by default. */
   maxRetries?: number;
-  /** Ghi đè URL suy ra từ environment. */
+  /** Overrides the URL derived from the environment. */
   baseUrl?: string;
-  /** Header gắn vào mọi request. */
+  /** Headers attached to every request. */
   defaultHeaders?: Record<string, string>;
   logger?: Logger;
 }

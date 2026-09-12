@@ -9,7 +9,7 @@ export interface ChaosOptions {
 
 const forcedCounters = new Map<string, number>();
 
-/** Trả về status bị ép cho request này, hoặc undefined nếu không bị ép. */
+/** Returns the status forced for this request, or undefined when none is forced. */
 export function nextForcedStatus(req: IncomingMessage): number | undefined {
   const header = req.headers['x-mock-force-status'];
   if (typeof header !== 'string' || header === '') return undefined;

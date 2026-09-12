@@ -1,10 +1,10 @@
 import { ValidationError } from './errors.js';
 import type { ClaimType, CreateClaimInput, DocumentType } from './types.js';
 
-/** Các loại hồ sơ được chấp nhận. */
+/** Accepted claim types. */
 export const CLAIM_TYPES: readonly ClaimType[] = ['OUTPATIENT', 'INPATIENT', 'DENTAL', 'MATERNITY'];
 
-/** Các loại tài liệu được chấp nhận. */
+/** Accepted document types. */
 export const DOCUMENT_TYPES: readonly DocumentType[] = [
   'medical_receipt',
   'discharge_summary',
@@ -14,10 +14,10 @@ export const DOCUMENT_TYPES: readonly DocumentType[] = [
   'other',
 ];
 
-/** Các mã tiền tệ được chấp nhận. */
+/** Accepted currency codes. */
 export const CURRENCIES: readonly string[] = ['THB', 'VND', 'USD', 'SGD', 'MYR', 'IDR', 'PHP'];
 
-/** Đuôi file được chấp nhận khi upload. */
+/** File extensions accepted for upload. */
 export const ALLOWED_EXTENSIONS: readonly string[] = ['.pdf', '.jpg', '.jpeg', '.png'];
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -25,7 +25,7 @@ const POLICY_ID = /^POL-\d+$/;
 const ICD10 = /^[A-Z]\d{2}(\.\d{1,4})?$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Kiểm tra dữ liệu tạo claim ngay tại client, trước khi gửi request nào. */
+/** Validates claim data on the client, before any request is sent. */
 export function validateCreateClaim(input: CreateClaimInput, nowMs: number): Record<string, string> {
   const fields: Record<string, string> = {};
   const value = input as Partial<CreateClaimInput> | undefined;
@@ -77,7 +77,7 @@ export function validateCreateClaim(input: CreateClaimInput, nowMs: number): Rec
   return fields;
 }
 
-/** Kiểm tra thông tin file trước khi mở file và gửi đi. */
+/** Validates file metadata before the file is opened and sent. */
 export function validateUpload(type: string, filename: string, size: number): Record<string, string> {
   const fields: Record<string, string> = {};
 
@@ -95,7 +95,7 @@ export function validateUpload(type: string, filename: string, size: number): Re
   return fields;
 }
 
-/** Ném ValidationError nếu có bất kỳ lỗi nào. */
+/** Throws ValidationError if there is any error at all. */
 export function assertValid(fields: Record<string, string>, message: string): void {
   if (Object.keys(fields).length > 0) {
     throw new ValidationError(message, fields, 'CLIENT_VALIDATION');

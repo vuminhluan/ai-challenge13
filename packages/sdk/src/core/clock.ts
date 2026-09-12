@@ -1,10 +1,10 @@
-/** Trừu tượng hoá thời gian để test không phải chờ thật. */
+/** Time abstraction, so tests never have to wait for real time. */
 export interface Clock {
   now(): number;
   sleep(ms: number, signal?: AbortSignal): Promise<void>;
 }
 
-/** Clock dùng đồng hồ và timer thật của hệ thống. */
+/** Clock backed by the system clock and real timers. */
 export const systemClock: Clock = {
   now: () => Date.now(),
   sleep: (ms, signal) =>

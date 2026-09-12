@@ -1,24 +1,24 @@
 const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 
-/** Giá trị mặc định cho thuật toán full jitter. */
+/** Defaults for the full jitter algorithm. */
 export const DEFAULT_BACKOFF = { baseMs: 250, capMs: 8000 } as const;
 
-/** Lượng ngẫu nhiên cộng thêm khi server có chỉ định Retry-After. */
+/** Extra randomness added when the server dictates a Retry-After. */
 const RETRY_AFTER_JITTER_MS = 250;
 
-/** Tuỳ chọn tính backoff. `random` được inject để test deterministic. */
+/** Backoff options. `random` is injected to keep tests deterministic. */
 export interface BackoffOptions {
   baseMs: number;
   capMs: number;
   random: () => number;
 }
 
-/** Status nào đáng thử lại. */
+/** Which statuses are worth retrying. */
 export function isRetryableStatus(status: number): boolean {
   return RETRYABLE_STATUSES.has(status);
 }
 
-/** Đọc header Retry-After ở cả hai dạng: số giây hoặc HTTP date. */
+/** Parses the Retry-After header in both forms: delay-seconds or HTTP-date. */
 export function parseRetryAfter(header: string | undefined, nowMs: number): number | undefined {
   if (header === undefined) return undefined;
   const seconds = Number(header.trim());
@@ -29,7 +29,7 @@ export function parseRetryAfter(header: string | undefined, nowMs: number): numb
 }
 
 /**
- * Tính thời gian chờ trước lần thử tiếp theo theo công thức full jitter:
+ * Computes how long to wait before the next attempt, using full jitter:
  * `random(0, min(cap, base * 2^attempt))`.
  */
 export function computeDelayMs(

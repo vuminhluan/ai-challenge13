@@ -161,15 +161,21 @@ pnpm example:3               # poll a claim until a decision is reached
 
 | Phase | Time |
 |---|---|
-| Brainstorming and planning | _to fill in_ |
-| Implementing the logic | _to fill in_ |
-| Running and testing | _to fill in_ |
+| Brainstorming and planning | 2h |
+| Implementation (AI-assisted) | 30 min |
+| Testing and fixes | 30 min |
+| Documentation | 30 min |
+| **Total** | **3h 30m** |
 
-**Brainstorming and planning** covers analysing the brief, settling the foundational decisions (Node-only runtime, pnpm monorepo, multipart uploads, polling for status, idempotency keys, zero-dependency validation), designing the architecture, and writing the design spec plus the implementation plan — both committed under [`docs/superpowers/`](docs/superpowers/).
+**Brainstorming and planning — 2h.** Analysing the brief, settling the foundational decisions (Node-only runtime, pnpm monorepo, multipart uploads, polling for status, idempotency keys, zero-dependency validation), designing the architecture, and writing both the design spec and the implementation plan. Both documents are committed under [`docs/superpowers/`](docs/superpowers/).
 
-**Implementing the logic** covers the monorepo and tooling, the mock server (all six endpoints, chaos middleware, claim lifecycle, file validation), the SDK core (transport, pipeline, auth, retry, errors, types, validation), the resources (claims, documents, multipart with progress, status watcher), and the documentation and examples.
+This is the phase that took the longest, and deliberately so. The plan breaks the work into 23 tasks, each with exact file paths, the interfaces neighbouring tasks depend on, and real test code — which is precisely what makes the next phase short.
 
-**Running and testing** covers the unit suite, the integration suite against the real mock server, running all three examples end-to-end, and fixing what those runs turned up.
+**Implementation (AI-assisted) — 30 min.** Working through those 23 tasks in order: the monorepo and tooling, the mock server (all six endpoints, chaos middleware, claim lifecycle, file validation), the SDK core (transport, pipeline, auth, retry, errors, types, validation), and the resources (claims, documents, multipart with progress, status watcher). Every task followed the same loop: write the failing test, watch it fail, write the minimal implementation, watch it pass, commit.
+
+**Testing and fixes — 30 min.** The integration suite against a real mock server, running all three examples end-to-end, and fixing what those runs turned up — a `pnpm` setting that blocked esbuild's build scripts, a missing `override` modifier that only surfaced during the `.d.ts` build, and a PDF fixture that was not actually a valid PDF.
+
+**Documentation — 30 min.** This README, the API reference, and the architecture and sequence diagrams.
 
 ## Project layout
 
@@ -179,10 +185,25 @@ packages/mock-server/   Mock API on node:http, with busboy for multipart parsing
 examples/               Three integration scripts that run as-is
 docs/api-reference.md   Full reference documentation
 docs/diagrams/          Architecture and sequence diagrams for the main flows
+docs/superpowers/       The design spec and the implementation plan
+ai-conversations/       Transcript of the AI session that produced this repo
 ```
 
 - Per-method reference: [docs/api-reference.md](docs/api-reference.md)
 - A quick picture of how the components interact: [docs/diagrams/](docs/diagrams/README.md)
+
+## How this repo was built
+
+The brief asks for AI coding tools to be used, and for the process to be visible. Everything needed to audit that process is in the repo:
+
+| Artefact | What it shows |
+|---|---|
+| [`ai-conversations/ai-conversation.txt`](ai-conversations/ai-conversation.txt) | The full transcript of the AI session: every question asked, every decision made, and every correction along the way |
+| [`docs/superpowers/specs/`](docs/superpowers/specs/) | The design spec agreed before any code was written |
+| [`docs/superpowers/plans/`](docs/superpowers/plans/) | The 23-task implementation plan, with test code written before implementation code |
+| `git log` | One commit per task, in the order the plan lays them out |
+
+The working method was deliberately front-loaded: decide the architecture in conversation, write it down as a spec, expand the spec into a task-by-task plan, and only then write code. The transcript shows where that process caught problems early — for instance, choosing `Idempotency-Key` before implementing retries, rather than discovering duplicate claims afterwards.
 
 ## Test coverage
 

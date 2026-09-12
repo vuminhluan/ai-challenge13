@@ -1,4 +1,4 @@
-/** Phiên bản SDK, dùng trong header User-Agent. */
+/** SDK version, used in the User-Agent header. */
 export const VERSION = '0.1.0';
 
 export { InsuranceSDK, type SdkDependencies } from './client.js';

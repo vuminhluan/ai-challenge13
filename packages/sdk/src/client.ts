@@ -6,7 +6,7 @@ import { ClaimsResource } from './resources/claims.js';
 import { DocumentsResource } from './resources/documents.js';
 import type { InsuranceSDKConfig } from './types.js';
 
-/** Các thành phần thay thế được, chủ yếu phục vụ test. */
+/** Substitutable components, mainly for tests. */
 export interface SdkDependencies {
   transport?: Transport;
   clock?: Clock;
@@ -14,7 +14,7 @@ export interface SdkDependencies {
 }
 
 /**
- * Điểm vào của SDK.
+ * Entry point of the SDK.
  *
  * ```ts
  * const sdk = new InsuranceSDK({ apiKey: 'pk_test_xxx', environment: 'sandbox' });
@@ -22,9 +22,9 @@ export interface SdkDependencies {
  * ```
  */
 export class InsuranceSDK {
-  /** Thao tác với hồ sơ bồi thường. */
+  /** Claim operations. */
   readonly claims: ClaimsResource;
-  /** Thao tác với tài liệu đính kèm. */
+  /** Document operations. */
   readonly documents: DocumentsResource;
 
   constructor(config: InsuranceSDKConfig, deps: SdkDependencies = {}) {

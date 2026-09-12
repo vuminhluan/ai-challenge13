@@ -1,4 +1,4 @@
-/** Lớp cơ sở của mọi lỗi do SDK ném ra. */
+/** Base class for every error the SDK throws. */
 export class InsuranceSDKError extends Error {
   readonly code: string;
   readonly requestId: string | undefined;
@@ -11,7 +11,7 @@ export class InsuranceSDKError extends Error {
   }
 }
 
-/** Dữ liệu không hợp lệ, do validate phía client hoặc server trả 400. */
+/** Invalid data, caught by client-side validation or returned as 400 by the server. */
 export class ValidationError extends InsuranceSDKError {
   readonly fields: Record<string, string>;
 
@@ -22,7 +22,7 @@ export class ValidationError extends InsuranceSDKError {
   }
 }
 
-/** Xác thực thất bại. Cần kiểm tra lại API key hoặc đăng nhập lại. */
+/** Authentication failed. Check the API key or re-authenticate. */
 export class AuthError extends InsuranceSDKError {
   readonly reason: 'invalid_api_key' | 'token_expired' | 'forbidden';
 
@@ -33,10 +33,10 @@ export class AuthError extends InsuranceSDKError {
   }
 }
 
-/** Không gọi được tới API, hoặc đã hết số lần thử lại. */
+/** The API could not be reached, or retries were exhausted. */
 export class NetworkError extends InsuranceSDKError {
   readonly attempts: number;
-  /** Lỗi gốc từ tầng socket, nếu có. Ghi đè `Error.cause` của chuẩn ES2022. */
+  /** The underlying socket error, if any. Overrides the ES2022 `Error.cause`. */
   override readonly cause: unknown;
 
   constructor(message: string, attempts: number, code = 'NETWORK_ERROR', cause?: unknown) {
@@ -47,7 +47,7 @@ export class NetworkError extends InsuranceSDKError {
   }
 }
 
-/** Một lần thử vượt quá timeout. */
+/** A single attempt exceeded the timeout. */
 export class TimeoutError extends NetworkError {
   readonly timeoutMs: number;
 
@@ -58,7 +58,7 @@ export class TimeoutError extends NetworkError {
   }
 }
 
-/** API trả về lỗi không thuộc các nhóm trên. */
+/** Any other error returned by the API. */
 export class ApiError extends InsuranceSDKError {
   readonly status: number;
   readonly retryable: boolean;
@@ -82,7 +82,7 @@ interface ErrorEnvelope {
 
 const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 
-/** Chuyển một response lỗi của API thành lỗi có kiểu tương ứng. */
+/** Turns an API error response into the matching typed error. */
 export function mapHttpError(status: number, rawBody: string, attempts: number): InsuranceSDKError {
   let envelope: ErrorEnvelope = {};
   try {

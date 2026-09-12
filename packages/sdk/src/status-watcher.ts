@@ -9,11 +9,11 @@ export interface WatcherDeps {
 }
 
 /**
- * Poll trạng thái một hồ sơ cho tới khi có quyết định cuối.
+ * Polls a claim until a final decision is reached.
  *
- * Vòng poll là một timer đang hoạt động, mà timer đang hoạt động giữ event loop
- * của Node sống. Vì vậy hàm này luôn trả về hàm dừng, tự dừng khi tới trạng thái
- * cuối, và dừng khi vượt `maxDurationMs`.
+ * The polling loop is an active timer, and an active timer keeps Node's event loop
+ * alive. That is why this function always returns a stop function, stops itself on a
+ * terminal status, and gives up once `maxDurationMs` has elapsed.
  */
 export function watchClaimStatus(
   deps: WatcherDeps,

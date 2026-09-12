@@ -17,7 +17,7 @@ interface ParsedUpload {
   contentType?: string;
   size: number;
   tooLarge: boolean;
-  /** HEAD_BYTES byte đầu tiên, giữ lại để nhận dạng định dạng thật của file. */
+  /** The first HEAD_BYTES bytes, kept to identify the real format of the file. */
   head: Buffer;
 }
 

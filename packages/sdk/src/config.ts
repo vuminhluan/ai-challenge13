@@ -1,13 +1,13 @@
 import { ValidationError } from './errors.js';
 import type { InsuranceSDKConfig, Logger } from './types.js';
 
-/** URL mặc định cho từng môi trường. */
+/** Default URL per environment. */
 export const ENVIRONMENT_BASE_URLS: Record<'sandbox' | 'production', string> = {
   sandbox: 'http://localhost:4000',
   production: 'https://api.insurance.example.com',
 };
 
-/** Config đã điền đủ giá trị mặc định. */
+/** Configuration with every default filled in. */
 export interface ResolvedConfig {
   apiKey: string;
   baseUrl: string;
@@ -17,7 +17,7 @@ export interface ResolvedConfig {
   logger: Logger | undefined;
 }
 
-/** Kiểm tra và chuẩn hoá config do đối tác truyền vào. */
+/** Validates and normalises the configuration supplied by the partner. */
 export function resolveConfig(config: InsuranceSDKConfig): ResolvedConfig {
   const fields: Record<string, string> = {};
   if (typeof config.apiKey !== 'string' || config.apiKey === '') fields.apiKey = 'required';

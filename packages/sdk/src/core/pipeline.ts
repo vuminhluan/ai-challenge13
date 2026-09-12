@@ -25,7 +25,7 @@ export interface PipelineRequest {
   body?: TransportBody;
   idempotencyKey?: string;
   signal?: AbortSignal;
-  /** Mặc định true. Đặt false cho request không thể gửi lại, ví dụ body là stream thô. */
+  /** Defaults to true. Set false for requests that cannot be resent, such as a raw stream body. */
   retryable?: boolean;
 }
 
@@ -34,7 +34,7 @@ interface TokenPayload {
   expiresIn: number;
 }
 
-/** Ghép auth, retry, idempotency, timeout và map lỗi thành một đường đi duy nhất. */
+/** Joins auth, retries, idempotency, timeouts and error mapping into a single path. */
 export class RequestPipeline {
   private readonly options: PipelineOptions;
   private readonly auth: AuthManager;
@@ -47,7 +47,7 @@ export class RequestPipeline {
     });
   }
 
-  /** Gửi một request, tự xử lý token, retry và map lỗi. */
+  /** Sends a request, handling tokens, retries and error mapping along the way. */
   async execute<T>(request: PipelineRequest): Promise<T> {
     const url = this.buildUrl(request.path, request.query);
     const idempotencyKey = request.method === 'POST' ? request.idempotencyKey ?? randomUUID() : undefined;
@@ -97,7 +97,7 @@ export class RequestPipeline {
         if (error instanceof AuthError && error.reason === 'token_expired') {
           authRetried = true;
           this.auth.invalidate(token.epoch);
-          this.options.logger?.debug('token hết hạn, đang refresh', { path: request.path });
+          this.options.logger?.debug('token expired, refreshing', { path: request.path });
           continue;
         }
       }
@@ -114,7 +114,7 @@ export class RequestPipeline {
 
   private async backoff(attemptIndex: number, retryAfterMs: number | undefined, signal?: AbortSignal): Promise<void> {
     const delay = computeDelayMs(attemptIndex, retryAfterMs, { ...DEFAULT_BACKOFF, random: this.options.random });
-    this.options.logger?.debug('chờ trước khi thử lại', { attemptIndex, delay });
+    this.options.logger?.debug('waiting before retry', { attemptIndex, delay });
     await this.options.clock.sleep(delay, signal);
   }
 

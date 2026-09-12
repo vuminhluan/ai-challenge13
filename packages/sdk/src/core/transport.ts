@@ -4,7 +4,7 @@ import type { Readable } from 'node:stream';
 import { NetworkError, TimeoutError } from '../errors.js';
 import type { ProgressHandler } from '../types.js';
 
-/** Body của một request ở tầng transport. */
+/** Request body at the transport layer. */
 export type TransportBody =
   | { kind: 'json'; value: unknown }
   | {
@@ -13,7 +13,7 @@ export type TransportBody =
       onProgress?: ProgressHandler;
     };
 
-/** Một request đã sẵn sàng để gửi đi. */
+/** A request ready to be sent. */
 export interface TransportRequest {
   method: 'GET' | 'POST';
   url: string;
@@ -23,19 +23,19 @@ export interface TransportRequest {
   timeoutMs: number;
 }
 
-/** Response thô, chưa parse. */
+/** Raw, unparsed response. */
 export interface TransportResponse {
   status: number;
   headers: Record<string, string>;
   body: string;
 }
 
-/** Tầng gửi byte. Thay được khi test. */
+/** The byte-moving layer. Substitutable in tests. */
 export interface Transport {
   send(request: TransportRequest): Promise<TransportResponse>;
 }
 
-/** Transport thật, dựng trên node:http và node:https. */
+/** Real transport built on node:http and node:https. */
 export class NodeHttpTransport implements Transport {
   send(req: TransportRequest): Promise<TransportResponse> {
     return new Promise<TransportResponse>((resolve, reject) => {
