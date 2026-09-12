@@ -111,6 +111,22 @@ const stop = sdk.claims.onStatusChange(claim.id, (status, updated) => {
 
 1. **Stream thô không được thử lại.** Khi truyền `{ stream, size, filename }`, SDK tắt retry cho request đó vì stream đã đọc thì không tua lại được, và gửi một file cụt còn tệ hơn báo lỗi. Cần retry thì truyền `Buffer` hoặc đường dẫn file.
 2. **Progress quay về 0 khi thử lại.** Nếu một lần upload bị 503 và SDK gửi lại, `onProgress` bắt đầu lại từ 0%. Thanh progress trên giao diện nên chấp nhận việc phần trăm tụt về 0.
+3. **Quét file sâu là hàm giả.** Mock server đối chiếu magic bytes thật, nhưng hàm quét sâu luôn trả về hợp lệ. Xem mục [Kiểm tra file phía server](#kiểm-tra-file-phía-server).
+
+## Kiểm tra file phía server
+
+Header `Content-Type` trong phần multipart là do client tự khai, nên tự nó không đáng tin: đổi tên `note.txt` thành `receipt.pdf` rồi khai `application/pdf` là qua được mọi kiểm tra dựa trên tên và header. Mock server vì vậy kiểm tra theo hai tầng, đặt trong [`packages/mock-server/src/file-content.ts`](packages/mock-server/src/file-content.ts):
+
+| Tầng | Hàm | Thật hay mockup | Làm gì |
+|---|---|---|---|
+| 1 | `matchesDeclaredType(head, contentType)` | **kiểm tra thật** | Đối chiếu magic bytes 8 byte đầu file với content type được khai: `%PDF-` cho PDF, `FF D8 FF` cho JPEG, `89 50 4E 47 0D 0A 1A 0A` cho PNG. Sai thì trả 400 với `fields.file = 'content does not match declared type ...'` |
+| 2 | `scanFileContent(head, contentType)` | **MOCKUP, luôn trả `{ ok: true }`** | Không kiểm tra gì cả |
+
+> **Nói rõ về tầng 2:** `scanFileContent` là hàm giả, luôn cho qua. Nó tồn tại để lộ ra đúng vị trí mà hệ thống thật sẽ cắm vào: quét virus, kiểm tra cấu trúc PDF có đọc được không, phát hiện ảnh trắng hoặc ảnh chụp màn hình giả mạo, đối chiếu OCR với số tiền trên claim. Mock server không làm những việc đó và không nên được coi là đã bảo vệ trước file độc hại.
+
+Những thứ **vẫn chưa** được kiểm tra, kể cả ở tầng 1: nội dung sau 8 byte đầu (một file PDF hợp lệ ở phần đầu nhưng hỏng ở giữa vẫn qua), sự khớp giữa đuôi file và nội dung (server chỉ soi content type được khai; phần đuôi file do SDK kiểm ở client), và mọi thứ liên quan tới ý nghĩa nghiệp vụ của tài liệu.
+
+File mẫu `examples/fixtures/receipt.pdf` là một PDF 1.4 hợp lệ thật, có bảng `xref`, page tree và một trang A4 mở được bằng Preview. Nó cố tình được viết bằng ASCII thuần để đọc và so sánh diff trực tiếp trong git.
 
 ## Mock server
 

@@ -185,7 +185,9 @@ upload(claimId: string, file: FileInput, options: UploadOptions): Promise<ClaimD
 
 **Trả về:** `ClaimDocument`.
 
-**Ném:** `ValidationError` nếu `type` sai, đuôi file ngoài pdf/jpg/jpeg/png, file rỗng hoặc quá 10MB; `ApiError` 404 nếu claim không tồn tại, 413 nếu server từ chối kích thước; `AuthError`; `NetworkError`.
+**Ném:** `ValidationError` nếu `type` sai, đuôi file ngoài pdf/jpg/jpeg/png, file rỗng hoặc quá 10MB (bắt tại client); `ValidationError` với `fields.file = 'content does not match declared type ...'` nếu server thấy magic bytes không khớp content type được khai; `ApiError` 404 nếu claim không tồn tại, 413 nếu server từ chối kích thước; `AuthError`; `NetworkError`.
+
+**Kiểm tra phía server:** ngoài các quy tắc client đã chặn, server đối chiếu 8 byte đầu của file với content type được khai. Tầng quét sâu (virus, cấu trúc PDF) là hàm mockup luôn cho qua — xem mục "Kiểm tra file phía server" trong README.
 
 **Retry:** bật khi nguồn là `Buffer` hoặc đường dẫn file, tắt khi là stream thô.
 
@@ -307,6 +309,8 @@ Vì `TimeoutError` kế thừa `NetworkError`, một nhánh `catch` bắt `Netwo
 |---|---|---|
 | `type` | thuộc `DOCUMENT_TYPES` | `must be one of medical_receipt, discharge_summary, prescription, lab_result, id_document, other` |
 | `file` | không rỗng, tối đa 10MB, đuôi thuộc `.pdf`, `.jpg`, `.jpeg`, `.png` | `must not be empty`, `must not exceed 10MB`, `must be one of .pdf, .jpg, .jpeg, .png` |
+
+Riêng nội dung file thì client không kiểm tra: SDK không đọc byte trước khi gửi. Việc đối chiếu magic bytes với content type được khai do server làm, và trả về cùng dạng `ValidationError` để đối tác chỉ cần một nhánh `catch`.
 
 Mọi lỗi của cùng một lời gọi được gom vào **một** `ValidationError` duy nhất, nên người dùng thấy hết vấn đề trong một lần thay vì sửa từng cái một.
 

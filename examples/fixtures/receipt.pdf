@@ -1,4 +1,48 @@
 %PDF-1.4
-1 0 obj<</Type/Catalog>>endobj
-trailer<</Root 1 0 R>>
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Length 761 >>
+stream
+BT /F1 20 Tf 72 770 Td (Medical Receipt) Tj ET
+BT /F2 11 Tf 72 742 Td (Sample fixture for the Insurance Partner Integration SDK) Tj ET
+0.6 w 72 730 m 523 730 l S
+BT /F2 12 Tf 72 700 Td (Policy ID:        POL-456) Tj ET
+BT /F2 12 Tf 72 678 Td (Claim type:       INPATIENT) Tj ET
+BT /F2 12 Tf 72 656 Td (Diagnosis code:   A09) Tj ET
+BT /F2 12 Tf 72 634 Td (Treatment date:   2024-03-20) Tj ET
+BT /F2 12 Tf 72 612 Td (Amount:           48,000.00 THB) Tj ET
+BT /F2 12 Tf 72 590 Td (Document type:    medical_receipt) Tj ET
+0.6 w 72 570 m 523 570 l S
+BT /F2 10 Tf 72 548 Td (This file exists so that examples/02-claim-with-document.ts has a real PDF to upload.) Tj ET
+BT /F2 10 Tf 72 532 Td (It is not a genuine receipt and has no financial or legal meaning.) Tj ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000257 00000 n 
+0000000359 00000 n 
+0000000456 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1267
 %%EOF

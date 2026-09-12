@@ -1,4 +1,6 @@
+import { readFile } from 'node:fs/promises';
 import type { Server } from 'node:http';
+import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer, defaultConfig } from '../src/server.js';
 
@@ -40,10 +42,16 @@ afterAll(async () => {
   await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
 });
 
-const upload = (targetClaimId: string, type: string, filename: string, contentType: string): Promise<Response> => {
+const upload = (
+  targetClaimId: string,
+  type: string,
+  filename: string,
+  contentType: string,
+  content: Buffer = Buffer.from('%PDF-1.4 nội dung giả'),
+): Promise<Response> => {
   const form = new FormData();
   form.set('type', type);
-  form.set('file', new Blob([Buffer.from('%PDF-1.4 nội dung giả')], { type: contentType }), filename);
+  form.set('file', new Blob([content], { type: contentType }), filename);
   return fetch(`${baseUrl}/api/v1/claims/${targetClaimId}/documents`, {
     method: 'POST',
     headers: { authorization: `Bearer ${token}` },
@@ -78,6 +86,21 @@ describe('document endpoints', () => {
   it('upload vào claim không tồn tại thì trả 404', async () => {
     const res = await upload('CLM-999999', 'medical_receipt', 'receipt.pdf', 'application/pdf');
     expect(res.status).toBe(404);
+  });
+
+  it('từ chối file khai là PDF nhưng nội dung không phải PDF', async () => {
+    const res = await upload(claimId, 'medical_receipt', 'receipt.pdf', 'application/pdf', Buffer.from('đây chỉ là văn bản thường'));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string; fields: Record<string, string> } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.fields.file).toContain('content does not match');
+  });
+
+  it('chấp nhận file PDF thật đọc từ đĩa', async () => {
+    const real = await readFile(fileURLToPath(new URL('../../../examples/fixtures/receipt.pdf', import.meta.url)));
+    const res = await upload(claimId, 'medical_receipt', 'receipt.pdf', 'application/pdf', real);
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as { size: number }).size).toBe(real.length);
   });
 
   it('liệt kê tài liệu của claim', async () => {

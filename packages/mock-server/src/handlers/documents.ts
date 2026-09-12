@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import busboy from 'busboy';
+import { HEAD_BYTES, matchesDeclaredType, scanFileContent } from '../file-content.js';
 import { sendError, sendJson } from '../http.js';
 import type { AuthContext } from '../router.js';
 import type { ServerConfig } from '../server.js';
@@ -16,11 +17,13 @@ interface ParsedUpload {
   contentType?: string;
   size: number;
   tooLarge: boolean;
+  /** HEAD_BYTES byte đầu tiên, giữ lại để nhận dạng định dạng thật của file. */
+  head: Buffer;
 }
 
 function parseMultipart(req: IncomingMessage): Promise<ParsedUpload> {
   return new Promise((resolve, reject) => {
-    const parsed: ParsedUpload = { size: 0, tooLarge: false };
+    const parsed: ParsedUpload = { size: 0, tooLarge: false, head: Buffer.alloc(0) };
     const bb = busboy({ headers: req.headers, limits: { fileSize: MAX_BYTES, files: 1 } });
 
     bb.on('field', (name, value) => {
@@ -31,6 +34,9 @@ function parseMultipart(req: IncomingMessage): Promise<ParsedUpload> {
       parsed.contentType = info.mimeType;
       stream.on('data', (chunk: Buffer) => {
         parsed.size += chunk.length;
+        if (parsed.head.length < HEAD_BYTES) {
+          parsed.head = Buffer.concat([parsed.head, chunk]).subarray(0, HEAD_BYTES);
+        }
       });
       stream.on('limit', () => {
         parsed.tooLarge = true;
@@ -75,6 +81,11 @@ export async function handleUploadDocument(
     fields.file = 'required';
   } else if (parsed.contentType === undefined || !ALLOWED_CONTENT_TYPES.includes(parsed.contentType)) {
     fields.file = `must be ${ALLOWED_CONTENT_TYPES.join(', ')}`;
+  } else if (!matchesDeclaredType(parsed.head, parsed.contentType)) {
+    fields.file = `content does not match declared type ${parsed.contentType}`;
+  } else {
+    const scan = scanFileContent(parsed.head, parsed.contentType);
+    if (!scan.ok) fields.file = scan.reason ?? 'failed content scan';
   }
   if (Object.keys(fields).length > 0) {
     sendError(res, 400, 'VALIDATION_ERROR', 'Invalid request body', fields);
