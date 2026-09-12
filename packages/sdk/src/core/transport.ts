@@ -49,9 +49,12 @@ export class NodeHttpTransport implements Transport {
         headers['content-type'] = 'application/json';
         headers['content-length'] = String(payload.length);
       }
+      let streamSource: { stream: Readable; contentLength: number } | undefined;
       if (req.body?.kind === 'stream') {
-        reject(new Error('stream body chưa được hỗ trợ'));
-        return;
+        const created = req.body.create();
+        streamSource = { stream: created.stream, contentLength: created.contentLength };
+        headers['content-type'] = created.contentType;
+        headers['content-length'] = String(created.contentLength);
       }
 
       let settled = false;
@@ -95,6 +98,43 @@ export class NodeHttpTransport implements Transport {
       clientRequest.on('error', (error: NodeJS.ErrnoException) => {
         finish(() => reject(new NetworkError(error.message, 1, error.code ?? 'NETWORK_ERROR', error)));
       });
+
+      if (streamSource !== undefined) {
+        const { stream, contentLength } = streamSource;
+        const onProgress = req.body?.kind === 'stream' ? req.body.onProgress : undefined;
+        let bytesSent = 0;
+        let lastPercent = -1;
+        const report = (): void => {
+          const percent = contentLength === 0 ? 100 : Math.floor((bytesSent / contentLength) * 100);
+          if (percent !== lastPercent) {
+            lastPercent = percent;
+            onProgress?.(percent, { bytesSent, totalBytes: contentLength });
+          }
+        };
+        report();
+
+        stream.on('data', (chunk: Buffer) => {
+          const ok = clientRequest.write(chunk, () => {
+            bytesSent += chunk.length;
+            report();
+          });
+          if (!ok) {
+            stream.pause();
+            clientRequest.once('drain', () => stream.resume());
+          }
+        });
+        stream.on('error', (error: Error) => {
+          clientRequest.destroy();
+          finish(() => reject(new NetworkError(error.message, 1, 'STREAM_ERROR', error)));
+        });
+        stream.on('end', () => {
+          clientRequest.end(() => {
+            bytesSent = contentLength;
+            report();
+          });
+        });
+        return;
+      }
 
       if (payload !== undefined) clientRequest.write(payload);
       clientRequest.end();
