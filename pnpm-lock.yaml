@@ -8,9 +8,9 @@ importers:
 
   .:
     dependencies:
-      busboy:
-        specifier: ^1.6.0
-        version: 1.6.0
+      '@insurance/sdk':
+        specifier: workspace:*
+        version: link:packages/sdk
     devDependencies:
       '@types/busboy':
         specifier: ^1.5.4

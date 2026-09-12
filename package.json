@@ -23,6 +23,6 @@
     "vitest": "^2.1.0"
   },
   "dependencies": {
-    "busboy": "^1.6.0"
+    "@insurance/sdk": "workspace:*"
   }
 }
