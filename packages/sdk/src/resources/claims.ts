@@ -1,6 +1,16 @@
 import type { Clock } from '../core/clock.js';
 import type { RequestPipeline } from '../core/pipeline.js';
-import type { Claim, CreateClaimInput, ListClaimsParams, PaginatedResult, RequestOptions } from '../types.js';
+import { watchClaimStatus } from '../status-watcher.js';
+import type {
+  Claim,
+  CreateClaimInput,
+  ListClaimsParams,
+  PaginatedResult,
+  RequestOptions,
+  StatusListener,
+  Unsubscribe,
+  WatchOptions,
+} from '../types.js';
 import { assertValid, validateCreateClaim } from '../validation.js';
 
 /** Các thao tác với hồ sơ bồi thường. */
@@ -46,5 +56,19 @@ export class ClaimsResource {
       query: { status: params.status, page: params.page, pageSize: params.pageSize },
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
+  }
+
+  /**
+   * Theo dõi thay đổi trạng thái của một hồ sơ bằng cách poll định kỳ.
+   *
+   * Luôn gọi hàm trả về khi không cần theo dõi nữa: vòng poll giữ tiến trình
+   * Node sống, nên bỏ quên nó sẽ khiến script không bao giờ thoát.
+   */
+  onStatusChange(claimId: string, listener: StatusListener, options: WatchOptions = {}): Unsubscribe {
+    return watchClaimStatus(
+      { clock: this.clock, fetchClaim: (signal) => this.get(claimId, { signal }) },
+      listener,
+      options,
+    );
   }
 }
