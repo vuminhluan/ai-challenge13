@@ -42,7 +42,7 @@ const setup = (): { claims: ClaimsResource; transport: FakeTransport } => {
 };
 
 describe('ClaimsResource.create', () => {
-  it('gửi POST tới /api/v1/claims với đúng body', async () => {
+  it('sends POST /api/v1/claims with the right body', async () => {
     const { claims, transport } = setup();
     transport.queue(TOKEN, jsonReply(201, CLAIM));
 
@@ -56,14 +56,14 @@ describe('ClaimsResource.create', () => {
     expect(request?.body).toEqual({ kind: 'json', value: VALID });
   });
 
-  it('dữ liệu sai thì ném ValidationError mà không gọi transport lần nào', async () => {
+  it('throws ValidationError on bad input without touching the transport', async () => {
     const { claims, transport } = setup();
 
     await expect(claims.create({ ...VALID, policyId: '', amount: -1 })).rejects.toBeInstanceOf(ValidationError);
     expect(transport.requests).toHaveLength(0);
   });
 
-  it('báo đủ các field sai trong một lần ném lỗi', async () => {
+  it('reports every invalid field in a single throw', async () => {
     const { claims } = setup();
     const error = await claims.create({} as CreateClaimInput).catch((err: unknown) => err);
     expect((error as ValidationError).fields).toEqual({
@@ -76,7 +76,7 @@ describe('ClaimsResource.create', () => {
     });
   });
 
-  it('truyền được idempotencyKey do người gọi chỉ định', async () => {
+  it('passes through a caller-supplied idempotencyKey', async () => {
     const { claims, transport } = setup();
     transport.queue(TOKEN, jsonReply(201, CLAIM));
 
@@ -87,7 +87,7 @@ describe('ClaimsResource.create', () => {
 });
 
 describe('ClaimsResource.get', () => {
-  it('gửi GET tới đúng đường dẫn', async () => {
+  it('sends GET to the right path', async () => {
     const { claims, transport } = setup();
     transport.queue(TOKEN, jsonReply(200, CLAIM));
 
@@ -97,7 +97,7 @@ describe('ClaimsResource.get', () => {
     expect(transport.requests[1]?.url).toBe('http://api.test/api/v1/claims/CLM-000001');
   });
 
-  it('id rỗng thì ném ValidationError mà không gọi transport', async () => {
+  it('throws ValidationError for an empty id without touching the transport', async () => {
     const { claims, transport } = setup();
     await expect(claims.get('')).rejects.toBeInstanceOf(ValidationError);
     expect(transport.requests).toHaveLength(0);
@@ -105,7 +105,7 @@ describe('ClaimsResource.get', () => {
 });
 
 describe('ClaimsResource.list', () => {
-  it('dựng query string từ bộ lọc', async () => {
+  it('builds the query string from the filters', async () => {
     const { claims, transport } = setup();
     transport.queue(TOKEN, jsonReply(200, { data: [CLAIM], pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 } }));
 
@@ -116,7 +116,7 @@ describe('ClaimsResource.list', () => {
     expect(transport.requests[1]?.url).toBe('http://api.test/api/v1/claims?status=PENDING&page=1&pageSize=20');
   });
 
-  it('không truyền tham số thì gọi không kèm query', async () => {
+  it('omits the query string when no parameters are given', async () => {
     const { claims, transport } = setup();
     transport.queue(TOKEN, jsonReply(200, { data: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 } }));
 

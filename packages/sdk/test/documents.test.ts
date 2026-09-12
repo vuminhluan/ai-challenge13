@@ -36,11 +36,11 @@ const setup = (): { documents: DocumentsResource; transport: FakeTransport } => 
 };
 
 describe('DocumentsResource.upload', () => {
-  it('upload từ Buffer và gửi body dạng stream retry được', async () => {
+  it('uploads from a Buffer and sends a retryable stream body', async () => {
     const { documents, transport } = setup();
     transport.queue(TOKEN, jsonReply(201, DOC));
 
-    const doc = await documents.upload('CLM-000001', Buffer.from('%PDF-1.4 nội dung'), {
+    const doc = await documents.upload('CLM-000001', Buffer.from('%PDF-1.4 sample content'), {
       type: 'medical_receipt',
       filename: 'receipt.pdf',
     });
@@ -51,21 +51,21 @@ describe('DocumentsResource.upload', () => {
     expect(request?.body?.kind).toBe('stream');
   });
 
-  it('upload từ đường dẫn file, tự suy ra tên và content type', async () => {
+  it('uploads from a file path, inferring the name and content type', async () => {
     const { documents, transport } = setup();
     transport.queue(TOKEN, jsonReply(201, DOC));
     const dir = mkdtempSync(join(tmpdir(), 'sdk-test-'));
     const path = join(dir, 'receipt.pdf');
-    writeFileSync(path, Buffer.from('%PDF-1.4 nội dung'));
+    writeFileSync(path, Buffer.from('%PDF-1.4 sample content'));
 
     await documents.upload('CLM-000001', path, { type: 'medical_receipt' });
 
     const body = transport.requests[1]?.body;
-    if (body?.kind !== 'stream') throw new Error('body phải là stream');
+    if (body?.kind !== 'stream') throw new Error('body must be a stream');
     expect(body.create().contentType).toContain('multipart/form-data; boundary=');
   });
 
-  it('loại tài liệu sai thì ném ValidationError mà không gọi transport', async () => {
+  it('throws ValidationError for a bad document type without touching the transport', async () => {
     const { documents, transport } = setup();
 
     await expect(
@@ -74,7 +74,7 @@ describe('DocumentsResource.upload', () => {
     expect(transport.requests).toHaveLength(0);
   });
 
-  it('đuôi file không hỗ trợ thì ném ValidationError trước khi gọi transport', async () => {
+  it('throws ValidationError for an unsupported extension before touching the transport', async () => {
     const { documents, transport } = setup();
 
     await expect(
@@ -83,9 +83,9 @@ describe('DocumentsResource.upload', () => {
     expect(transport.requests).toHaveLength(0);
   });
 
-  it('stream thô thì tắt retry vì không tua lại được', async () => {
+  it('a raw stream disables retries because it cannot be rewound', async () => {
     const { documents, transport } = setup();
-    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'bận' } }));
+    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'busy' } }));
 
     await expect(
       documents.upload(
@@ -97,7 +97,7 @@ describe('DocumentsResource.upload', () => {
     expect(transport.requests).toHaveLength(2);
   });
 
-  it('truyền onProgress xuống tầng transport', async () => {
+  it('passes onProgress down to the transport layer', async () => {
     const { documents, transport } = setup();
     transport.queue(TOKEN, jsonReply(201, DOC));
     const onProgress = (): void => {};
@@ -105,13 +105,13 @@ describe('DocumentsResource.upload', () => {
     await documents.upload('CLM-000001', Buffer.from('%PDF-1.4'), { type: 'medical_receipt', filename: 'a.pdf', onProgress });
 
     const body = transport.requests[1]?.body;
-    if (body?.kind !== 'stream') throw new Error('body phải là stream');
+    if (body?.kind !== 'stream') throw new Error('body must be a stream');
     expect(body.onProgress).toBe(onProgress);
   });
 });
 
 describe('DocumentsResource.list', () => {
-  it('trả về mảng tài liệu', async () => {
+  it('returns an array of documents', async () => {
     const { documents, transport } = setup();
     transport.queue(TOKEN, jsonReply(200, { data: [DOC] }));
 

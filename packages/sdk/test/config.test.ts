@@ -3,7 +3,7 @@ import { resolveConfig } from '../src/config.js';
 import { ValidationError } from '../src/errors.js';
 
 describe('resolveConfig', () => {
-  it('điền giá trị mặc định', () => {
+  it('fills in the defaults', () => {
     const config = resolveConfig({ apiKey: 'pk_test_abc' });
     expect(config.baseUrl).toBe('http://localhost:4000');
     expect(config.timeout).toBe(30_000);
@@ -11,15 +11,15 @@ describe('resolveConfig', () => {
     expect(config.defaultHeaders).toEqual({});
   });
 
-  it('environment production trỏ tới url production', () => {
+  it('the production environment points at the production url', () => {
     expect(resolveConfig({ apiKey: 'pk_test_abc', environment: 'production' }).baseUrl).toContain('https://');
   });
 
-  it('baseUrl ghi đè environment và bị cắt dấu gạch chéo cuối', () => {
+  it('baseUrl overrides environment and has its trailing slash trimmed', () => {
     expect(resolveConfig({ apiKey: 'pk_test_abc', environment: 'production', baseUrl: 'http://127.0.0.1:9999/' }).baseUrl).toBe('http://127.0.0.1:9999');
   });
 
-  it('thiếu apiKey thì ném ValidationError', () => {
+  it('throws ValidationError when apiKey is missing', () => {
     expect(() => resolveConfig({ apiKey: '' })).toThrow(ValidationError);
     try {
       resolveConfig({ apiKey: '' });
@@ -29,7 +29,7 @@ describe('resolveConfig', () => {
     }
   });
 
-  it('timeout và maxRetries không hợp lệ thì ném ValidationError', () => {
+  it('throws ValidationError for an invalid timeout or maxRetries', () => {
     expect(() => resolveConfig({ apiKey: 'pk_test_abc', timeout: 0 })).toThrow(ValidationError);
     expect(() => resolveConfig({ apiKey: 'pk_test_abc', maxRetries: -1 })).toThrow(ValidationError);
   });

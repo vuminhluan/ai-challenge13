@@ -19,19 +19,19 @@ async function main(): Promise<void> {
     amount: 48000,
     currency: 'THB',
   });
-  console.log(`Đã tạo ${claim.id}`);
+  console.log(`Created ${claim.id}`);
 
   const doc = await sdk.documents.upload(claim.id, RECEIPT, {
     type: 'medical_receipt',
     onProgress: (percent, detail) => {
-      process.stdout.write(`\r   ${renderBar(percent)}  ${detail.bytesSent}/${detail.totalBytes} byte`);
+      process.stdout.write(`\r   ${renderBar(percent)}  ${detail.bytesSent}/${detail.totalBytes} bytes`);
     },
   });
   process.stdout.write('\n');
-  console.log(`Đã upload ${doc.id} (${doc.filename}, ${doc.size} byte)`);
+  console.log(`Uploaded ${doc.id} (${doc.filename}, ${doc.size} bytes)`);
 
   const docs = await sdk.documents.list(claim.id);
-  console.log(`Claim ${claim.id} hiện có ${docs.length} tài liệu`);
+  console.log(`Claim ${claim.id} now has ${docs.length} document(s)`);
 }
 
 main().catch((error: unknown) => {

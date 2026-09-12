@@ -18,7 +18,7 @@ const CLAIM = {
 };
 
 describe('InsuranceSDK', () => {
-  it('ghép các resource và gọi được end-to-end với transport giả', async () => {
+  it('wires the resources together and works end to end with a fake transport', async () => {
     const transport = new FakeTransport().queue(TOKEN, jsonReply(201, CLAIM));
     const sdk = new InsuranceSDK(
       { apiKey: 'pk_test_abc', baseUrl: 'http://api.test' },
@@ -39,7 +39,7 @@ describe('InsuranceSDK', () => {
     expect(typeof sdk.claims.onStatusChange).toBe('function');
   });
 
-  it('config sai thì ném ValidationError ngay lúc khởi tạo', () => {
+  it('throws ValidationError at construction time for a bad config', () => {
     expect(() => new InsuranceSDK({ apiKey: '' })).toThrow(ValidationError);
   });
 });

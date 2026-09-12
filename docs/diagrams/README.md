@@ -1,24 +1,24 @@
-# Sơ đồ kiến trúc
+# Architecture diagrams
 
-Sơ đồ vẽ bằng Mermaid, GitHub render trực tiếp trong trang, không cần cài gì thêm.
+Diagrams are written in Mermaid. GitHub renders them inline, so nothing needs to be installed.
 
-| Sơ đồ | Loại | Trả lời câu hỏi |
+| Diagram | Type | Question it answers |
 |---|---|---|
-| [00 — Tổng thể các thành phần](00-components.md) | graph | Hệ thống có những lớp nào, phụ thuộc vào nhau ra sao |
-| [01 — Tạo claim](01-create-claim.md) | sequence | Một lời gọi `claims.create` đi qua những đâu |
-| [02 — Retry khi gặp 503](02-retry-503.md) | sequence | SDK che lỗi tạm thời của server bằng cách nào |
-| [03 — Xác thực và refresh token](03-token-refresh.md) | sequence | Token được lấy, cache và làm mới lúc nào |
-| [04 — Upload tài liệu](04-upload-document.md) | sequence | Multipart, tiến độ và kiểm tra file phía server |
-| [05 — Theo dõi trạng thái](05-status-watcher.md) | sequence | Vòng poll chạy và dừng thế nào |
+| [00 — Component overview](00-components.md) | graph | What pieces exist, and what depends on what |
+| [01 — Creating a claim](01-create-claim.md) | sequence | Where a single `claims.create` call travels |
+| [02 — Retrying a 503](02-retry-503.md) | sequence | How the SDK absorbs a transient server failure |
+| [03 — Auth and token refresh](03-token-refresh.md) | sequence | When tokens are fetched, cached and renewed |
+| [04 — Uploading a document](04-upload-document.md) | sequence | Multipart, progress, and server-side file checks |
+| [05 — Tracking status](05-status-watcher.md) | sequence | How the polling loop runs and stops |
 
-## Đọc theo thứ tự nào
+## Suggested reading order
 
-Muốn nắm nhanh thì đọc **00** rồi **01**: hai sơ đồ này đủ để hiểu đường đi của một request bình thường.
+For a quick grasp, read **00** then **01** — together they cover the path of an ordinary request.
 
-Ba sơ đồ còn lại là ba tình huống mà SDK xử lý thay cho đối tác: server hỏng tạm thời (**02**), token hết hạn (**03**), và trạng thái claim thay đổi theo thời gian (**05**). **04** là luồng phức tạp nhất vì có thêm phần stream và tiến độ.
+The remaining three sequence diagrams each show one situation the SDK handles on the partner's behalf: a server failing temporarily (**02**), a token expiring (**03**), and a claim status changing over time (**05**). **04** is the densest flow, because it adds streaming and progress on top.
 
-## Quy ước trong các sơ đồ
+## Conventions used here
 
-- Participant được đặt tên theo đúng class hoặc file trong mã nguồn, để từ sơ đồ tìm thẳng được tới code.
-- Khối `Note` giải thích **vì sao** thiết kế như vậy, không lặp lại thứ mà mũi tên đã nói.
-- Mọi sơ đồ đều dừng ở ranh giới HTTP của mock server và không vẽ chi tiết bên trong `node:http`.
+- Participants are named after the actual class or file in the source, so you can jump from a diagram straight to the code.
+- `Note` blocks explain **why** something is designed that way; they do not restate what an arrow already says.
+- Every diagram stops at the mock server's HTTP boundary and does not draw the internals of `node:http`.

@@ -9,7 +9,7 @@ beforeAll(async () => {
   server = createServer(defaultConfig({ failureRate: 0, minDelayMs: 0, maxDelayMs: 0 }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
-  if (address === null || typeof address === 'string') throw new Error('không lấy được port');
+  if (address === null || typeof address === 'string') throw new Error('could not read the port');
   baseUrl = `http://127.0.0.1:${address.port}`;
 });
 
@@ -25,7 +25,7 @@ const postToken = (body: unknown): Promise<Response> =>
   });
 
 describe('POST /api/v1/auth/token', () => {
-  it('đổi API key hợp lệ lấy được JWT', async () => {
+  it('exchanges a valid API key for a JWT', async () => {
     const res = await postToken({ apiKey: 'pk_test_abc' });
     expect(res.status).toBe(200);
     const body = (await res.json()) as { accessToken: string; expiresIn: number; tokenType: string };
@@ -34,14 +34,14 @@ describe('POST /api/v1/auth/token', () => {
     expect(body.accessToken.split('.')).toHaveLength(3);
   });
 
-  it('từ chối API key sai tiền tố', async () => {
+  it('rejects an API key with the wrong prefix', async () => {
     const res = await postToken({ apiKey: 'sk_live_abc' });
     expect(res.status).toBe(401);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe('INVALID_API_KEY');
   });
 
-  it('báo lỗi validation khi thiếu apiKey', async () => {
+  it('returns a validation error when apiKey is missing', async () => {
     const res = await postToken({});
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; fields: Record<string, string> } };
@@ -49,12 +49,12 @@ describe('POST /api/v1/auth/token', () => {
     expect(body.error.fields.apiKey).toBe('required');
   });
 
-  it('trả 404 cho route không tồn tại', async () => {
-    const res = await fetch(`${baseUrl}/api/v1/không-có`);
+  it('returns 404 for an unknown route', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/no-such-route`);
     expect(res.status).toBe(404);
   });
 
-  it('header x-mock-force-status ép response đầu tiên thành 503', async () => {
+  it('the x-mock-force-status header forces the first response to 503', async () => {
     const headers = { 'content-type': 'application/json', 'x-mock-force-status': '503', 'x-mock-scenario': 'auth-forced' };
     const first = await fetch(`${baseUrl}/api/v1/auth/token`, { method: 'POST', headers, body: JSON.stringify({ apiKey: 'pk_test_abc' }) });
     expect(first.status).toBe(503);

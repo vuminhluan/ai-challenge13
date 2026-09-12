@@ -22,7 +22,7 @@ const flush = async (): Promise<void> => {
 };
 
 describe('watchClaimStatus', () => {
-  it('chỉ gọi callback khi trạng thái thật sự đổi, rồi tự dừng ở trạng thái cuối', async () => {
+  it('calls the listener only on a real change, then stops at a terminal status', async () => {
     const clock = new FakeClock();
     const statuses: ClaimStatus[] = ['PENDING', 'PENDING', 'IN_REVIEW', 'IN_REVIEW', 'APPROVED'];
     let index = 0;
@@ -36,7 +36,7 @@ describe('watchClaimStatus', () => {
     expect(fetchClaim).toHaveBeenCalledTimes(5);
   });
 
-  it('phát ngay nếu lần poll đầu tiên đã ở trạng thái cuối', async () => {
+  it('emits immediately when the first poll is already terminal', async () => {
     const clock = new FakeClock();
     const seen: ClaimStatus[] = [];
 
@@ -46,7 +46,7 @@ describe('watchClaimStatus', () => {
     expect(seen).toEqual(['REJECTED']);
   });
 
-  it('so sánh với initialStatus khi được cung cấp', async () => {
+  it('compares against initialStatus when one is supplied', async () => {
     const clock = new FakeClock();
     const seen: ClaimStatus[] = [];
 
@@ -60,7 +60,7 @@ describe('watchClaimStatus', () => {
     expect(seen).toEqual(['IN_REVIEW']);
   });
 
-  it('unsubscribe dừng vòng poll', async () => {
+  it('unsubscribing stops the polling loop', async () => {
     const clock = new FakeClock();
     const fetchClaim = vi.fn(async () => claimWith('PENDING'));
 
@@ -73,7 +73,7 @@ describe('watchClaimStatus', () => {
     expect(fetchClaim.mock.calls.length).toBeLessThanOrEqual(2);
   });
 
-  it('dừng khi vượt quá maxDurationMs', async () => {
+  it('stops once maxDurationMs elapses', async () => {
     const clock = new FakeClock();
     const fetchClaim = vi.fn(async () => claimWith('PENDING'));
 
@@ -83,13 +83,13 @@ describe('watchClaimStatus', () => {
     expect(fetchClaim.mock.calls.length).toBeLessThanOrEqual(6);
   });
 
-  it('lỗi khi poll đi vào onError chứ không làm vỡ vòng lặp', async () => {
+  it('polling errors go to onError without breaking the loop', async () => {
     const clock = new FakeClock();
     const errors: unknown[] = [];
     let call = 0;
     const fetchClaim = vi.fn(async () => {
       call += 1;
-      if (call === 1) throw new Error('mạng lỗi');
+      if (call === 1) throw new Error('network failure');
       return claimWith('APPROVED');
     });
 

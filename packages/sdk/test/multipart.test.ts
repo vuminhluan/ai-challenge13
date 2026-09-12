@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildMultipart } from '../src/core/multipart.js';
 import { NodeHttpTransport } from '../src/core/transport.js';
 
-const fileContent = Buffer.from('%PDF-1.4 nội dung giả'.repeat(500));
+const fileContent = Buffer.from('%PDF-1.4 sample content'.repeat(500));
 
 const makeBody = (): ReturnType<typeof buildMultipart> =>
   buildMultipart(
@@ -20,14 +20,14 @@ const makeBody = (): ReturnType<typeof buildMultipart> =>
   );
 
 describe('buildMultipart', () => {
-  it('contentLength khớp đúng số byte thực sự phát ra', async () => {
+  it('contentLength matches the bytes actually emitted', async () => {
     const body = makeBody();
     const chunks: Buffer[] = [];
     for await (const chunk of body.create()) chunks.push(chunk as Buffer);
     expect(Buffer.concat(chunks).length).toBe(body.contentLength);
   });
 
-  it('có đủ boundary, tên field, tên file và phần đóng', async () => {
+  it('contains the boundary, field name, filename and closing part', async () => {
     const body = makeBody();
     const chunks: Buffer[] = [];
     for await (const chunk of body.create()) chunks.push(chunk as Buffer);
@@ -39,7 +39,7 @@ describe('buildMultipart', () => {
     expect(text.endsWith('--test-boundary--\r\n')).toBe(true);
   });
 
-  it('gọi create hai lần thì ra hai stream độc lập, dùng lại được khi retry', async () => {
+  it('calling create twice yields two independent streams, so a retry can resend', async () => {
     const body = makeBody();
     const read = async (): Promise<number> => {
       let total = 0;
@@ -51,7 +51,7 @@ describe('buildMultipart', () => {
   });
 });
 
-describe('NodeHttpTransport với body stream', () => {
+describe('NodeHttpTransport with a stream body', () => {
   let server: Server;
   let baseUrl: string;
 
@@ -68,7 +68,7 @@ describe('NodeHttpTransport với body stream', () => {
     });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
-    if (address === null || typeof address === 'string') throw new Error('không lấy được port');
+    if (address === null || typeof address === 'string') throw new Error('could not read the port');
     baseUrl = `http://127.0.0.1:${address.port}`;
   });
 
@@ -76,7 +76,7 @@ describe('NodeHttpTransport với body stream', () => {
     await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   });
 
-  it('gửi hết byte và báo progress tăng dần tới 100', async () => {
+  it('sends every byte and reports progress rising to 100', async () => {
     const body = makeBody();
     const percents: number[] = [];
     const res = await new NodeHttpTransport().send({

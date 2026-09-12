@@ -30,7 +30,7 @@ beforeAll(async () => {
   );
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
-  if (address === null || typeof address === 'string') throw new Error('không lấy được port');
+  if (address === null || typeof address === 'string') throw new Error('could not read the port');
   baseUrl = `http://127.0.0.1:${address.port}`;
 });
 
@@ -38,8 +38,8 @@ afterAll(async () => {
   await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
 });
 
-describe('SDK với mock server thật', () => {
-  it('tạo, lấy và liệt kê claim', async () => {
+describe('SDK against the real mock server', () => {
+  it('creates, fetches and lists a claim', async () => {
     const sdk = makeSdk();
     const created = await sdk.claims.create(INPUT);
     expect(created.id).toMatch(/^CLM-\d{6}$/);
@@ -52,12 +52,12 @@ describe('SDK với mock server thật', () => {
     expect(list.pagination.pageSize).toBe(10);
   });
 
-  it('upload tài liệu và báo tiến độ tới 100', async () => {
+  it('uploads a document and reports progress up to 100', async () => {
     const sdk = makeSdk();
     const claim = await sdk.claims.create(INPUT);
     const percents: number[] = [];
 
-    const doc = await sdk.documents.upload(claim.id, Buffer.from('%PDF-1.4 hoá đơn giả'.repeat(200)), {
+    const doc = await sdk.documents.upload(claim.id, Buffer.from('%PDF-1.4 sample receipt'.repeat(200)), {
       type: 'medical_receipt',
       filename: 'receipt.pdf',
       onProgress: (percent) => percents.push(percent),
@@ -69,36 +69,36 @@ describe('SDK với mock server thật', () => {
     expect(docs.map((item) => item.id)).toContain(doc.id);
   });
 
-  it('tự thử lại khi server trả 503 hai lần liên tiếp', async () => {
+  it('retries by itself when the server returns 503 twice in a row', async () => {
     const sdk = makeSdk({ 'x-mock-force-status': '503,503', 'x-mock-scenario': `retry-${Date.now()}` });
     const claim = await sdk.claims.create(INPUT);
     expect(claim.id).toMatch(/^CLM-\d{6}$/);
   });
 
-  it('validation phía client chặn dữ liệu sai trước khi gọi server', async () => {
+  it('client-side validation blocks bad data before reaching the server', async () => {
     const sdk = makeSdk();
     const error = await sdk.claims.create({ ...INPUT, treatmentDate: '2099-01-01' }).catch((err: unknown) => err);
     expect(error).toMatchObject({ name: 'ValidationError', code: 'CLIENT_VALIDATION' });
     expect((error as { fields: Record<string, string> }).fields.treatmentDate).toBe('must not be in the future');
   });
 
-  it('claim không tồn tại thì thành ApiError 404', async () => {
+  it('an unknown claim surfaces as ApiError 404', async () => {
     const sdk = makeSdk();
     await expect(sdk.claims.get('CLM-999999')).rejects.toMatchObject({ name: 'ApiError', status: 404 });
   });
 
-  it('API key sai thì ném AuthError', async () => {
+  it('a bad API key throws AuthError', async () => {
     const sdk = new InsuranceSDK({ apiKey: 'sk_live_sai', baseUrl });
     await expect(sdk.claims.list()).rejects.toMatchObject({ name: 'AuthError', reason: 'invalid_api_key' });
   });
 
-  it('onStatusChange nhận đủ chuyển tiếp rồi tự dừng', async () => {
+  it('onStatusChange sees the transitions through and stops itself', async () => {
     const sdk = makeSdk();
     const claim = await sdk.claims.create(INPUT);
     const seen: ClaimStatus[] = [];
 
     await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('watcher không dừng đúng hạn')), 5000);
+      const timeout = setTimeout(() => reject(new Error('the watcher did not stop in time')), 5000);
       sdk.claims.onStatusChange(
         claim.id,
         (status) => {

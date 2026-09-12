@@ -25,7 +25,7 @@ beforeAll(async () => {
   server = createServer(defaultConfig({ failureRate: 0, minDelayMs: 0, maxDelayMs: 0 }));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
-  if (address === null || typeof address === 'string') throw new Error('không lấy được port');
+  if (address === null || typeof address === 'string') throw new Error('could not read the port');
   baseUrl = `http://127.0.0.1:${address.port}`;
   const res = await fetch(`${baseUrl}/api/v1/auth/token`, {
     method: 'POST',
@@ -40,7 +40,7 @@ afterAll(async () => {
 });
 
 describe('claims endpoints', () => {
-  it('tạo claim trả về 201 và trạng thái PENDING', async () => {
+  it('creating a claim returns 201 and status PENDING', async () => {
     const res = await fetch(`${baseUrl}/api/v1/claims`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(VALID) });
     expect(res.status).toBe(201);
     const claim = (await res.json()) as { id: string; status: string; statusHistory: unknown[] };
@@ -49,7 +49,7 @@ describe('claims endpoints', () => {
     expect(claim.statusHistory).toHaveLength(1);
   });
 
-  it('thiếu token thì trả 401 UNAUTHORIZED', async () => {
+  it('a missing token returns 401 UNAUTHORIZED', async () => {
     const res = await fetch(`${baseUrl}/api/v1/claims`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -59,7 +59,7 @@ describe('claims endpoints', () => {
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe('UNAUTHORIZED');
   });
 
-  it('body sai thì trả 400 kèm lỗi từng field', async () => {
+  it('an invalid body returns 400 with per-field errors', async () => {
     const res = await fetch(`${baseUrl}/api/v1/claims`, {
       method: 'POST',
       headers: authHeaders(),
@@ -71,7 +71,7 @@ describe('claims endpoints', () => {
     expect(Object.keys(body.error.fields).sort()).toEqual(['amount', 'policyId']);
   });
 
-  it('dùng lại Idempotency-Key với cùng body thì trả lại claim cũ', async () => {
+  it('reusing an Idempotency-Key with the same body returns the original claim', async () => {
     const headers = authHeaders({ 'idempotency-key': 'key-abc' });
     const first = await fetch(`${baseUrl}/api/v1/claims`, { method: 'POST', headers, body: JSON.stringify(VALID) });
     const second = await fetch(`${baseUrl}/api/v1/claims`, { method: 'POST', headers, body: JSON.stringify(VALID) });
@@ -79,7 +79,7 @@ describe('claims endpoints', () => {
     expect(((await second.json()) as { id: string }).id).toBe(((await first.json()) as { id: string }).id);
   });
 
-  it('dùng lại Idempotency-Key với body khác thì trả 409', async () => {
+  it('reusing an Idempotency-Key with a different body returns 409', async () => {
     const headers = authHeaders({ 'idempotency-key': 'key-conflict' });
     await fetch(`${baseUrl}/api/v1/claims`, { method: 'POST', headers, body: JSON.stringify(VALID) });
     const res = await fetch(`${baseUrl}/api/v1/claims`, { method: 'POST', headers, body: JSON.stringify({ ...VALID, amount: 999 }) });
@@ -87,12 +87,12 @@ describe('claims endpoints', () => {
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe('IDEMPOTENCY_KEY_REUSED');
   });
 
-  it('lấy claim không tồn tại thì trả 404', async () => {
+  it('fetching an unknown claim returns 404', async () => {
     const res = await fetch(`${baseUrl}/api/v1/claims/CLM-999999`, { headers: authHeaders() });
     expect(res.status).toBe(404);
   });
 
-  it('liệt kê claim có phân trang và lọc theo status', async () => {
+  it('listing claims supports pagination and status filtering', async () => {
     const res = await fetch(`${baseUrl}/api/v1/claims?status=PENDING&page=1&pageSize=2`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {

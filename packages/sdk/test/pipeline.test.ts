@@ -23,7 +23,7 @@ const setup = (): { pipeline: RequestPipeline; transport: FakeTransport; clock: 
 };
 
 describe('RequestPipeline', () => {
-  it('lấy token rồi gắn Authorization, default header và Idempotency-Key cho POST', async () => {
+  it('fetches a token, then attaches Authorization, default headers and an Idempotency-Key on POST', async () => {
     const { pipeline, transport } = setup();
     transport.queue(TOKEN, jsonReply(201, { id: 'CLM-000001' }));
 
@@ -37,7 +37,7 @@ describe('RequestPipeline', () => {
     expect(call?.headers['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  it('dựng đúng query string từ tham số list', async () => {
+  it('builds the query string from list parameters', async () => {
     const { pipeline, transport } = setup();
     transport.queue(TOKEN, jsonReply(200, { data: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 } }));
 
@@ -46,9 +46,9 @@ describe('RequestPipeline', () => {
     expect(transport.requests[1]?.url).toBe('http://api.test/api/v1/claims?status=PENDING&page=1');
   });
 
-  it('gặp 503 thì thử lại và giữ nguyên Idempotency-Key', async () => {
+  it('retries on 503 and keeps the same Idempotency-Key', async () => {
     const { pipeline, transport, clock } = setup();
-    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'bận' } }), jsonReply(201, { id: 'CLM-000002' }));
+    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'busy' } }), jsonReply(201, { id: 'CLM-000002' }));
 
     const result = await pipeline.execute<{ id: string }>({ method: 'POST', path: '/api/v1/claims', body: { kind: 'json', value: {} } });
 
@@ -57,16 +57,16 @@ describe('RequestPipeline', () => {
     expect(transport.requests[1]?.headers['idempotency-key']).toBe(transport.requests[2]?.headers['idempotency-key']);
   });
 
-  it('hết số lần thử thì ném ApiError kèm số lần đã thử', async () => {
+  it('throws ApiError with the attempt count once retries run out', async () => {
     const { pipeline, transport, clock } = setup();
-    const unavailable = (): ReturnType<typeof jsonReply> => jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'bận' } });
+    const unavailable = (): ReturnType<typeof jsonReply> => jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'busy' } });
     transport.queue(TOKEN, unavailable(), unavailable(), unavailable(), unavailable());
 
     await expect(pipeline.execute({ method: 'GET', path: '/api/v1/claims/CLM-1' })).rejects.toBeInstanceOf(ApiError);
     expect(clock.sleeps).toEqual([125, 250, 500]);
   });
 
-  it('không thử lại với lỗi 400 và trả về ValidationError', async () => {
+  it('does not retry a 400 and returns ValidationError', async () => {
     const { pipeline, transport } = setup();
     transport.queue(TOKEN, jsonReply(400, { error: { code: 'VALIDATION_ERROR', message: 'sai', fields: { amount: 'must be positive' } } }));
 
@@ -74,9 +74,9 @@ describe('RequestPipeline', () => {
     expect(transport.requests).toHaveLength(2);
   });
 
-  it('gặp 401 thì refresh token và gửi lại đúng một lần', async () => {
+  it('refreshes the token on 401 and replays exactly once', async () => {
     const { pipeline, transport } = setup();
-    transport.queue(TOKEN, jsonReply(401, { error: { code: 'TOKEN_EXPIRED', message: 'hết hạn' } }), TOKEN_2, jsonReply(200, { id: 'CLM-000003' }));
+    transport.queue(TOKEN, jsonReply(401, { error: { code: 'TOKEN_EXPIRED', message: 'expired' } }), TOKEN_2, jsonReply(200, { id: 'CLM-000003' }));
 
     const result = await pipeline.execute<{ id: string }>({ method: 'GET', path: '/api/v1/claims/CLM-000003' });
 
@@ -84,15 +84,15 @@ describe('RequestPipeline', () => {
     expect(transport.requests[3]?.headers.authorization).toBe('Bearer jwt-2');
   });
 
-  it('401 lần thứ hai thì ném AuthError', async () => {
+  it('throws AuthError on a second 401', async () => {
     const { pipeline, transport } = setup();
-    const expired = (): ReturnType<typeof jsonReply> => jsonReply(401, { error: { code: 'TOKEN_EXPIRED', message: 'hết hạn' } });
+    const expired = (): ReturnType<typeof jsonReply> => jsonReply(401, { error: { code: 'TOKEN_EXPIRED', message: 'expired' } });
     transport.queue(TOKEN, expired(), TOKEN_2, expired());
 
     await expect(pipeline.execute({ method: 'GET', path: '/api/v1/claims/CLM-1' })).rejects.toBeInstanceOf(AuthError);
   });
 
-  it('API key sai thì ném AuthError ngay, không thử lại', async () => {
+  it('throws AuthError immediately for a bad API key, with no retries', async () => {
     const { pipeline, transport } = setup();
     transport.queue(jsonReply(401, { error: { code: 'INVALID_API_KEY', message: 'sai key' } }));
 
@@ -100,14 +100,14 @@ describe('RequestPipeline', () => {
     expect(transport.requests).toHaveLength(1);
   });
 
-  it('lỗi mạng thì thử lại rồi ném NetworkError kèm attempts', async () => {
+  it('retries socket failures then throws NetworkError carrying attempts', async () => {
     const { pipeline, transport } = setup();
     transport.queue(
       TOKEN,
-      new NetworkError('kết nối bị đóng', 1, 'ECONNRESET'),
-      new NetworkError('kết nối bị đóng', 1, 'ECONNRESET'),
-      new NetworkError('kết nối bị đóng', 1, 'ECONNRESET'),
-      new NetworkError('kết nối bị đóng', 1, 'ECONNRESET'),
+      new NetworkError('connection reset', 1, 'ECONNRESET'),
+      new NetworkError('connection reset', 1, 'ECONNRESET'),
+      new NetworkError('connection reset', 1, 'ECONNRESET'),
+      new NetworkError('connection reset', 1, 'ECONNRESET'),
     );
 
     const error = await pipeline.execute({ method: 'GET', path: '/api/v1/claims' }).catch((err: unknown) => err);
@@ -115,9 +115,9 @@ describe('RequestPipeline', () => {
     expect((error as NetworkError).attempts).toBe(4);
   });
 
-  it('request đánh dấu retryable:false thì không thử lại dù gặp 503', async () => {
+  it('a request marked retryable:false is not retried even on 503', async () => {
     const { pipeline, transport } = setup();
-    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'bận' } }));
+    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'busy' } }));
 
     await expect(
       pipeline.execute({ method: 'POST', path: '/api/v1/claims/CLM-1/documents', retryable: false, body: { kind: 'json', value: {} } }),
@@ -125,19 +125,19 @@ describe('RequestPipeline', () => {
     expect(transport.requests).toHaveLength(2);
   });
 
-  it('tôn trọng Retry-After của server', async () => {
+  it('honours the Retry-After sent by the server', async () => {
     const { pipeline, transport, clock } = setup();
-    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'bận' } }, { 'retry-after': '2' }), jsonReply(200, { ok: true }));
+    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'busy' } }, { 'retry-after': '2' }), jsonReply(200, { ok: true }));
 
     await pipeline.execute({ method: 'GET', path: '/api/v1/claims' });
 
     expect(clock.sleeps).toEqual([2125]);
   });
 
-  it('signal bị abort trong lúc chờ backoff thì dừng ngay', async () => {
+  it('aborting the signal during backoff stops immediately', async () => {
     const { pipeline, transport } = setup();
     const controller = new AbortController();
-    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'bận' } }));
+    transport.queue(TOKEN, jsonReply(503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'busy' } }));
     controller.abort();
 
     await expect(pipeline.execute({ method: 'GET', path: '/api/v1/claims', signal: controller.signal })).rejects.toBeDefined();

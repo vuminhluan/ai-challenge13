@@ -1,19 +1,19 @@
 # Insurance Partner Integration SDK
 
-SDK TypeScript giúp đối tác bảo hiểm (bệnh viện, môi giới, doanh nghiệp) nhúng chức năng nộp hồ sơ bồi thường vào ứng dụng của mình: tạo claim, upload tài liệu kèm tiến độ, và theo dõi trạng thái. Repo gồm cả một mock API server để chạy thử ngay, không cần backend thật. Yêu cầu Node.js 20 trở lên.
+A TypeScript SDK that lets insurance partners — hospitals, brokers, corporates — embed claim submission into their own applications: create claims, upload documents with progress reporting, and track claim status. The repo ships with a mock API server so you can run everything without a real backend. Requires Node.js 20 or newer.
 
-## Quickstart trong 5 phút
+## Quickstart in 5 minutes
 
 ```bash
 pnpm install
-pnpm build              # SDK build ra dist, examples import từ đó
+pnpm build              # the SDK builds to dist, which the examples import from
 pnpm mock-server        # terminal 1
 pnpm example:1          # terminal 2
 ```
 
-API key của môi trường sandbox là bất kỳ chuỗi nào bắt đầu bằng `pk_test_`, ví dụ `pk_test_demo`.
+Any string starting with `pk_test_` works as a sandbox API key — for example `pk_test_demo`.
 
-Tạo claim đầu tiên:
+Create your first claim:
 
 ```ts
 import { InsuranceSDK } from '@insurance/sdk';
@@ -31,21 +31,21 @@ const claim = await sdk.claims.create({
 console.log(claim.id, claim.status); // CLM-000001 PENDING
 ```
 
-SDK tự lo phần xác thực: bạn không cần gọi endpoint token, không cần lưu JWT, không cần theo dõi hạn token.
+Authentication is handled for you: no token endpoint to call, no JWT to store, no expiry to track.
 
-## Cấu hình
+## Configuration
 
-| Tuỳ chọn | Kiểu | Mặc định | Mô tả |
+| Option | Type | Default | Description |
 |---|---|---|---|
-| `apiKey` | `string` | bắt buộc | API key của đối tác. Sandbox dùng tiền tố `pk_test_` |
-| `environment` | `'sandbox' \| 'production'` | `'sandbox'` | Quyết định URL API |
-| `timeout` | `number` | `30000` | Timeout tính cho **mỗi lần thử**, đơn vị ms |
-| `maxRetries` | `number` | `3` | Số lần thử lại tối đa, tức tối đa 4 lần gửi |
-| `baseUrl` | `string` | theo `environment` | Ghi đè URL, tiện khi chạy mock server ở cổng khác |
-| `defaultHeaders` | `Record<string, string>` | `{}` | Header gắn vào mọi request |
-| `logger` | `{ debug(msg, meta?) }` | không có | Nhận log debug về refresh token và backoff. Token không bao giờ bị ghi ra |
+| `apiKey` | `string` | required | Partner API key. Sandbox keys use the `pk_test_` prefix |
+| `environment` | `'sandbox' \| 'production'` | `'sandbox'` | Selects the API URL |
+| `timeout` | `number` | `30000` | Timeout **per attempt**, in milliseconds |
+| `maxRetries` | `number` | `3` | Maximum retries, so at most 4 attempts in total |
+| `baseUrl` | `string` | from `environment` | Overrides the URL — handy when the mock server runs on another port |
+| `defaultHeaders` | `Record<string, string>` | `{}` | Headers attached to every request |
+| `logger` | `{ debug(msg, meta?) }` | none | Receives debug output about token refresh and backoff. Tokens are never logged |
 
-## Xử lý lỗi
+## Error handling
 
 ```ts
 import { ApiError, AuthError, NetworkError, ValidationError } from '@insurance/sdk';
@@ -56,116 +56,142 @@ try {
   if (error instanceof ValidationError) {
     console.log(error.fields); // { policyId: 'required', amount: 'must be positive' }
   } else if (error instanceof AuthError) {
-    console.log('Cần xác thực lại:', error.reason);
+    console.log('Re-authenticate:', error.reason);
   } else if (error instanceof NetworkError) {
-    console.log(`Thử lại sau, đã thử ${error.attempts} lần`);
+    console.log(`Retry later, gave up after ${error.attempts} attempts`);
   } else if (error instanceof ApiError) {
     console.log(error.status, error.code);
   }
 }
 ```
 
-| Lỗi | Sinh ra khi | Thuộc tính riêng |
+| Error | Raised when | Extra properties |
 |---|---|---|
-| `ValidationError` | Client tự bắt được dữ liệu sai (`code: 'CLIENT_VALIDATION'`), hoặc server trả 400 (`code: 'VALIDATION_ERROR'`) | `fields` |
-| `AuthError` | API key sai, token hết hạn không cứu được, hoặc 403 | `reason` |
-| `NetworkError` | Không kết nối được, hoặc đã hết số lần thử lại | `attempts`, `cause` |
-| `TimeoutError` | Một lần thử vượt `timeout`. Là lớp con của `NetworkError` | `timeoutMs` |
-| `ApiError` | Các lỗi HTTP còn lại: 404, 409, 413, 5xx | `status`, `retryable` |
+| `ValidationError` | The client catches bad input (`code: 'CLIENT_VALIDATION'`), or the server returns 400 (`code: 'VALIDATION_ERROR'`) | `fields` |
+| `AuthError` | Bad API key, unrecoverable token expiry, or 403 | `reason` |
+| `NetworkError` | The API is unreachable, or retries are exhausted | `attempts`, `cause` |
+| `TimeoutError` | A single attempt exceeds `timeout`. Subclass of `NetworkError` | `timeoutMs` |
+| `ApiError` | Every other HTTP failure: 404, 409, 413, 5xx | `status`, `retryable` |
 
-Mọi lỗi đều kế thừa `InsuranceSDKError` và có `code`, phần lớn có thêm `requestId` để đối chiếu log với bên vận hành API.
+All errors extend `InsuranceSDKError` and carry a `code`; most also carry a `requestId` so you can match your logs against the API operator's.
 
-## Retry hoạt động ra sao
+## How retries work
 
-Mock server cố tình trả 503 cho khoảng 10% request. SDK tự thử lại mà đối tác không phải viết dòng nào.
+The mock server deliberately fails about 10% of requests with a 503. The SDK retries on your behalf — you write no retry code.
 
-- **Thử lại với:** 429, 502, 503, 504, lỗi socket (`ECONNRESET`, `ECONNREFUSED`, `EAI_AGAIN`), và timeout của một lần thử.
-- **Không thử lại với:** 400, 403, 404, 409, 413, 422. Thử lại cũng không đổi kết quả.
-- **401 đi đường riêng:** refresh token rồi gửi lại đúng một lần.
-- **Công thức chờ (full jitter):** `random(0, min(8000, 250 × 2^attempt))`. Với `maxRetries: 3`, ba khoảng chờ nằm trong 0–250ms, 0–500ms và 0–1000ms.
-- **Tôn trọng `Retry-After`:** nếu server có gửi, SDK chờ đúng khoảng đó cộng thêm 0–250ms ngẫu nhiên, để nhiều client không cùng thức dậy một lúc.
+- **Retried:** 429, 502, 503, 504, socket failures (`ECONNRESET`, `ECONNREFUSED`, `EAI_AGAIN`), and per-attempt timeouts.
+- **Not retried:** 400, 403, 404, 409, 413, 422. Retrying would not change the answer.
+- **401 takes its own path:** refresh the token, then replay the request exactly once.
+- **Backoff formula (full jitter):** `random(0, min(8000, 250 × 2^attempt))`. With `maxRetries: 3` the three waits fall in 0–250ms, 0–500ms and 0–1000ms.
+- **`Retry-After` is honoured:** when the server sends it, the SDK waits that long plus a random 0–250ms, so clients do not all wake at the same instant.
 
-Phần ngẫu nhiên là điểm quan trọng nhất. Backoff cố định khiến mọi client cùng thử lại đúng một nhịp và dồn tải vào server đang yếu.
+The randomness is the important half, not the doubling. Fixed backoff makes every client retry in lockstep and pile load onto a server that is already struggling.
 
-**Idempotency.** Mỗi lời gọi `create` hoặc `upload` được gắn một `Idempotency-Key` (UUID) và key đó giữ nguyên qua mọi lần thử lại. Nếu request đầu đã tới server rồi mới rớt kết nối, lần thử sau nhận lại đúng claim cũ chứ không tạo bản trùng. Bạn cũng có thể tự đặt key qua `options.idempotencyKey`.
+**Idempotency.** Every `create` and `upload` call carries an `Idempotency-Key` (a UUID), and that key stays the same across all retries. If the first attempt reached the server before the connection dropped, the retry gets the original claim back instead of creating a duplicate. You can supply your own key through `options.idempotencyKey`.
 
-## Tự động refresh token
+## Automatic token refresh
 
-- Token được coi là hết hạn **sớm hơn 60 giây** so với `exp` thật, nên không bao giờ gửi đi một token sắp chết.
-- Nhiều request song song gặp lúc token hết hạn chỉ tạo **một** lần gọi endpoint token, không phải mỗi request một lần.
-- Nếu vẫn gặp 401 `TOKEN_EXPIRED` (lệch đồng hồ, server restart, request bay lâu), SDK làm mới token và gửi lại **đúng một lần**. 401 lần nữa thì ném `AuthError` chứ không lặp vô hạn.
-- API key sai thì ném `AuthError` ngay, không thử lại.
+- A token is treated as expired **60 seconds early**, so a nearly dead token is never sent.
+- Concurrent requests that all hit an expired token trigger **one** token call, not one per request.
+- If a 401 `TOKEN_EXPIRED` still comes back — clock skew, a server restart, a request that took longer than expected — the SDK refreshes and replays **exactly once**. A second 401 raises `AuthError` instead of looping forever.
+- A bad API key raises `AuthError` immediately, with no retries.
 
-## Theo dõi trạng thái
+## Tracking status
 
 ```ts
 const stop = sdk.claims.onStatusChange(claim.id, (status, updated) => {
-  console.log(`${updated.id} chuyển sang ${status}`);
+  console.log(`${updated.id} is now ${status}`);
   if (status === 'APPROVED' || status === 'REJECTED') stop();
 });
 ```
 
-> **Luôn giữ và gọi hàm unsubscribe.** Vòng poll là một timer đang hoạt động, mà timer đang hoạt động giữ event loop của Node sống. Bỏ quên nó thì script không bao giờ thoát, còn server dài hạn sẽ tích luỹ vô hạn vòng poll. Watcher tự dừng khi claim vào trạng thái cuối và khi vượt `maxDurationMs` (mặc định 5 phút), nhưng hàm dừng vẫn là cách duy nhất để huỷ giữa chừng.
+> **Always keep and call the unsubscribe function.** The polling loop is an active timer, and an active timer keeps Node's event loop alive. Forget it and your script never exits, while a long-running server accumulates polling loops without bound. The watcher does stop itself on a terminal status and after `maxDurationMs` (5 minutes by default), but the returned function is the only way to cancel it early.
 
-## Giới hạn đã biết
+## Known limitations
 
-1. **Stream thô không được thử lại.** Khi truyền `{ stream, size, filename }`, SDK tắt retry cho request đó vì stream đã đọc thì không tua lại được, và gửi một file cụt còn tệ hơn báo lỗi. Cần retry thì truyền `Buffer` hoặc đường dẫn file.
-2. **Progress quay về 0 khi thử lại.** Nếu một lần upload bị 503 và SDK gửi lại, `onProgress` bắt đầu lại từ 0%. Thanh progress trên giao diện nên chấp nhận việc phần trăm tụt về 0.
-3. **Quét file sâu là hàm giả.** Mock server đối chiếu magic bytes thật, nhưng hàm quét sâu luôn trả về hợp lệ. Xem mục [Kiểm tra file phía server](#kiểm-tra-file-phía-server).
+1. **Raw streams are not retried.** When you pass `{ stream, size, filename }`, the SDK disables retries for that request: a consumed stream cannot be rewound, and sending a truncated file is worse than reporting an error. Pass a `Buffer` or a file path when you want retries.
+2. **Progress restarts at 0 on a retry.** If an upload hits a 503 and the SDK resends it, `onProgress` starts again from 0%. Progress bars should tolerate the percentage dropping back to zero.
+3. **Deep file scanning is a stub.** The mock server does check magic bytes for real, but the deep scan function always reports success. See [Server-side file validation](#server-side-file-validation).
 
-## Kiểm tra file phía server
+## Server-side file validation
 
-Header `Content-Type` trong phần multipart là do client tự khai, nên tự nó không đáng tin: đổi tên `note.txt` thành `receipt.pdf` rồi khai `application/pdf` là qua được mọi kiểm tra dựa trên tên và header. Mock server vì vậy kiểm tra theo hai tầng, đặt trong [`packages/mock-server/src/file-content.ts`](packages/mock-server/src/file-content.ts):
+The `Content-Type` inside a multipart part is written by the client, so on its own it proves nothing: rename `note.txt` to `receipt.pdf`, declare `application/pdf`, and every name-based or header-based check passes. The mock server therefore validates in two tiers, in [`packages/mock-server/src/file-content.ts`](packages/mock-server/src/file-content.ts):
 
-| Tầng | Hàm | Thật hay mockup | Làm gì |
+| Tier | Function | Real or stub | What it does |
 |---|---|---|---|
-| 1 | `matchesDeclaredType(head, contentType)` | **kiểm tra thật** | Đối chiếu magic bytes 8 byte đầu file với content type được khai: `%PDF-` cho PDF, `FF D8 FF` cho JPEG, `89 50 4E 47 0D 0A 1A 0A` cho PNG. Sai thì trả 400 với `fields.file = 'content does not match declared type ...'` |
-| 2 | `scanFileContent(head, contentType)` | **MOCKUP, luôn trả `{ ok: true }`** | Không kiểm tra gì cả |
+| 1 | `matchesDeclaredType(head, contentType)` | **real check** | Compares the first 8 bytes against the declared content type: `%PDF-` for PDF, `FF D8 FF` for JPEG, `89 50 4E 47 0D 0A 1A 0A` for PNG. A mismatch returns 400 with `fields.file = 'content does not match declared type ...'` |
+| 2 | `scanFileContent(head, contentType)` | **STUB, always returns `{ ok: true }`** | Nothing at all |
 
-> **Nói rõ về tầng 2:** `scanFileContent` là hàm giả, luôn cho qua. Nó tồn tại để lộ ra đúng vị trí mà hệ thống thật sẽ cắm vào: quét virus, kiểm tra cấu trúc PDF có đọc được không, phát hiện ảnh trắng hoặc ảnh chụp màn hình giả mạo, đối chiếu OCR với số tiền trên claim. Mock server không làm những việc đó và không nên được coi là đã bảo vệ trước file độc hại.
+> **To be explicit about tier 2:** `scanFileContent` is a mock that always passes. It exists to mark the exact seam where a real system would plug in virus scanning, PDF structure checks, blank-page and screenshot-forgery detection, or OCR cross-checks against the claimed amount. The mock server does none of that and must not be taken as protection against malicious files.
 
-Những thứ **vẫn chưa** được kiểm tra, kể cả ở tầng 1: nội dung sau 8 byte đầu (một file PDF hợp lệ ở phần đầu nhưng hỏng ở giữa vẫn qua), sự khớp giữa đuôi file và nội dung (server chỉ soi content type được khai; phần đuôi file do SDK kiểm ở client), và mọi thứ liên quan tới ý nghĩa nghiệp vụ của tài liệu.
+Still unchecked, even in tier 1: anything past the first 8 bytes (a file that starts as valid PDF but is corrupt in the middle still passes), agreement between the file extension and the content (the server only inspects the declared content type; the extension is checked client-side by the SDK), and anything about what the document actually means.
 
-File mẫu `examples/fixtures/receipt.pdf` là một PDF 1.4 hợp lệ thật, có bảng `xref`, page tree và một trang A4 mở được bằng Preview. Nó cố tình được viết bằng ASCII thuần để đọc và so sánh diff trực tiếp trong git.
+The fixture at `examples/fixtures/receipt.pdf` is a genuinely valid PDF 1.4 with an `xref` table, a page tree and one A4 page that opens in any PDF viewer. It is deliberately written in plain ASCII so it stays readable and diffable in git.
 
 ## Mock server
 
-| Biến môi trường | Mặc định | Ý nghĩa |
+| Environment variable | Default | Meaning |
 |---|---|---|
-| `PORT` | `4000` | Cổng lắng nghe |
-| `TOKEN_TTL_SECONDS` | `3600` | Hạn của JWT. Đặt nhỏ để xem refresh hoạt động |
-| `FAILURE_RATE` | `0.1` | Tỉ lệ request bị trả 503 |
-| `MIN_DELAY_MS` | `200` | Độ trễ tối thiểu |
-| `MAX_DELAY_MS` | `500` | Độ trễ tối đa |
-| `LIFECYCLE_REVIEW_MS` | `5000` | Sau bao lâu claim chuyển sang `IN_REVIEW` |
-| `LIFECYCLE_DECISION_MS` | `10000` | Sau bao lâu có quyết định cuối |
-| `LIFECYCLE_REJECT_ABOVE` | `100000` | Claim vượt ngưỡng này thì bị `REJECTED` |
+| `PORT` | `4000` | Listening port |
+| `TOKEN_TTL_SECONDS` | `3600` | JWT lifetime. Set it low to watch refresh happen |
+| `FAILURE_RATE` | `0.1` | Fraction of requests answered with 503 |
+| `MIN_DELAY_MS` | `200` | Minimum simulated latency |
+| `MAX_DELAY_MS` | `500` | Maximum simulated latency |
+| `LIFECYCLE_REVIEW_MS` | `5000` | How long until a claim moves to `IN_REVIEW` |
+| `LIFECYCLE_DECISION_MS` | `10000` | How long until a final decision |
+| `LIFECYCLE_REJECT_ABOVE` | `100000` | Claims above this amount end up `REJECTED` |
 
-Ví dụ chạy nhanh để xem vòng đời claim: `LIFECYCLE_REVIEW_MS=1000 LIFECYCLE_DECISION_MS=2000 pnpm mock-server`.
+To watch the whole claim lifecycle quickly: `LIFECYCLE_REVIEW_MS=1000 LIFECYCLE_DECISION_MS=2000 pnpm mock-server`.
 
-Server còn nhận header chỉ dùng cho test: `x-mock-force-status: 503,503` kèm `x-mock-scenario: <id duy nhất>` để ép các response đầu tiên hỏng theo ý muốn.
+The server also accepts a test-only header, `x-mock-force-status: 503,503` together with `x-mock-scenario: <unique id>`, which forces the first responses to fail on demand.
 
-## Lệnh phát triển
+## Development commands
 
 ```bash
-pnpm test                    # chạy toàn bộ test
-pnpm vitest run --coverage   # test kèm báo cáo coverage
-pnpm build                   # build SDK ra dist (ESM + CJS + .d.ts)
-pnpm mock-server             # chạy mock API
-pnpm example:1               # nộp claim đơn giản
-pnpm example:2               # nộp claim kèm upload có thanh tiến độ
-pnpm example:3               # theo dõi trạng thái tới khi có quyết định
+pnpm test                    # run the whole test suite
+pnpm vitest run --coverage   # tests with a coverage report
+pnpm build                   # build the SDK to dist (ESM + CJS + .d.ts)
+pnpm mock-server             # run the mock API
+pnpm example:1               # simple claim submission
+pnpm example:2               # claim submission with document upload
+pnpm example:3               # poll a claim until a decision is reached
 ```
 
-## Cấu trúc repo
+## Timeline
+
+| Phase | Time |
+|---|---|
+| Brainstorming and planning | _to fill in_ |
+| Implementing the logic | _to fill in_ |
+| Running and testing | _to fill in_ |
+
+**Brainstorming and planning** covers analysing the brief, settling the foundational decisions (Node-only runtime, pnpm monorepo, multipart uploads, polling for status, idempotency keys, zero-dependency validation), designing the architecture, and writing the design spec plus the implementation plan — both committed under [`docs/superpowers/`](docs/superpowers/).
+
+**Implementing the logic** covers the monorepo and tooling, the mock server (all six endpoints, chaos middleware, claim lifecycle, file validation), the SDK core (transport, pipeline, auth, retry, errors, types, validation), the resources (claims, documents, multipart with progress, status watcher), and the documentation and examples.
+
+**Running and testing** covers the unit suite, the integration suite against the real mock server, running all three examples end-to-end, and fixing what those runs turned up.
+
+## Project layout
 
 ```
-packages/sdk/           SDK, không có runtime dependency nào
-packages/mock-server/   Mock API dựng trên node:http, chỉ dùng busboy để parse multipart
-examples/               Ba script tích hợp chạy được ngay
-docs/api-reference.md   Tài liệu tham chiếu đầy đủ
-docs/diagrams/          Sơ đồ kiến trúc và sơ đồ tuần tự các luồng chính
+packages/sdk/           The SDK — zero runtime dependencies
+packages/mock-server/   Mock API on node:http, with busboy for multipart parsing only
+examples/               Three integration scripts that run as-is
+docs/api-reference.md   Full reference documentation
+docs/diagrams/          Architecture and sequence diagrams for the main flows
 ```
 
-- Tài liệu chi tiết từng phương thức: [docs/api-reference.md](docs/api-reference.md)
-- Muốn nắm nhanh cách các thành phần tương tác: [docs/diagrams/](docs/diagrams/README.md)
+- Per-method reference: [docs/api-reference.md](docs/api-reference.md)
+- A quick picture of how the components interact: [docs/diagrams/](docs/diagrams/README.md)
+
+## Test coverage
+
+143 tests across 22 files:
+
+| Scope | Tests |
+|---|---|
+| Mock server | 48 |
+| SDK unit tests | 88 |
+| SDK integration tests against the mock server | 7 |
+
+Line coverage for `packages/sdk/src` sits at 97%, against an 85% threshold enforced in `vitest.config.ts`.

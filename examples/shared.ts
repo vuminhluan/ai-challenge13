@@ -1,6 +1,6 @@
 import { ApiError, AuthError, InsuranceSDK, NetworkError, ValidationError } from '@insurance/sdk';
 
-/** Tạo SDK trỏ tới mock server đang chạy ở local. */
+/** Builds an SDK pointed at the mock server running locally. */
 export function createSdk(): InsuranceSDK {
   return new InsuranceSDK({
     apiKey: process.env.INSURANCE_API_KEY ?? 'pk_test_demo',
@@ -10,13 +10,13 @@ export function createSdk(): InsuranceSDK {
   });
 }
 
-/** Diễn giải lỗi theo từng loại để example in ra cho dễ hiểu. */
+/** Renders an error by type so the examples print something readable. */
 export function describeError(error: unknown): string {
   if (error instanceof ValidationError) {
     return `ValidationError (${error.code}): ${JSON.stringify(error.fields)}`;
   }
-  if (error instanceof AuthError) return `AuthError: ${error.reason}. Kiểm tra lại API key.`;
-  if (error instanceof NetworkError) return `NetworkError sau ${error.attempts} lần thử: ${error.message}`;
+  if (error instanceof AuthError) return `AuthError: ${error.reason}. Check the API key.`;
+  if (error instanceof NetworkError) return `NetworkError after ${error.attempts} attempts: ${error.message}`;
   if (error instanceof ApiError) return `ApiError ${error.status} (${error.code}): ${error.message}`;
-  return `Lỗi không xác định: ${String(error)}`;
+  return `Unknown error: ${String(error)}`;
 }

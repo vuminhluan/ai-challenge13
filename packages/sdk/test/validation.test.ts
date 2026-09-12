@@ -14,11 +14,11 @@ const VALID: CreateClaimInput = {
 };
 
 describe('validateCreateClaim', () => {
-  it('input hợp lệ thì không có lỗi', () => {
+  it('reports no errors for valid input', () => {
     expect(validateCreateClaim(VALID, NOW)).toEqual({});
   });
 
-  it('gom tất cả field bắt buộc còn thiếu vào một lần', () => {
+  it('collects every missing required field at once', () => {
     expect(validateCreateClaim({} as CreateClaimInput, NOW)).toEqual({
       policyId: 'required',
       claimType: 'required',
@@ -29,39 +29,39 @@ describe('validateCreateClaim', () => {
     });
   });
 
-  it('bắt lỗi định dạng policyId', () => {
+  it('catches a malformed policyId', () => {
     expect(validateCreateClaim({ ...VALID, policyId: 'POLICY-1' }, NOW).policyId).toBe('must match POL-<digits>');
   });
 
-  it('bắt lỗi claimType ngoài danh sách', () => {
+  it('catches a claimType outside the enum', () => {
     expect(validateCreateClaim({ ...VALID, claimType: 'SURGERY' as CreateClaimInput['claimType'] }, NOW).claimType).toContain('must be one of');
   });
 
-  it('bắt lỗi mã ICD-10 sai', () => {
+  it('catches an invalid ICD-10 code', () => {
     expect(validateCreateClaim({ ...VALID, diagnosisCode: 'JO6.9' }, NOW).diagnosisCode).toBe('must be a valid ICD-10 code');
   });
 
-  it('bắt lỗi ngày điều trị sai định dạng và ở tương lai', () => {
+  it('catches a malformed treatment date and one in the future', () => {
     expect(validateCreateClaim({ ...VALID, treatmentDate: '15/03/2024' }, NOW).treatmentDate).toBe('must be a valid YYYY-MM-DD date');
     expect(validateCreateClaim({ ...VALID, treatmentDate: '2024-06-02' }, NOW).treatmentDate).toBe('must not be in the future');
   });
 
-  it('bắt lỗi số tiền', () => {
+  it('catches invalid amounts', () => {
     expect(validateCreateClaim({ ...VALID, amount: -5 }, NOW).amount).toBe('must be positive');
     expect(validateCreateClaim({ ...VALID, amount: 10.999 }, NOW).amount).toBe('must have at most 2 decimal places');
   });
 
-  it('bắt lỗi tiền tệ không hỗ trợ', () => {
+  it('catches an unsupported currency', () => {
     expect(validateCreateClaim({ ...VALID, currency: 'thb' }, NOW).currency).toContain('must be one of');
   });
 });
 
 describe('validateUpload', () => {
-  it('file hợp lệ thì không có lỗi', () => {
+  it('reports no errors for a valid file', () => {
     expect(validateUpload('medical_receipt', 'receipt.pdf', 1024)).toEqual({});
   });
 
-  it('bắt lỗi loại tài liệu, đuôi file và kích thước', () => {
+  it('catches a bad document type, extension and size', () => {
     expect(validateUpload('selfie', 'receipt.pdf', 1024).type).toContain('must be one of');
     expect(validateUpload('other', 'note.txt', 1024).file).toContain('must be one of');
     expect(validateUpload('other', 'big.pdf', 11 * 1024 * 1024).file).toBe('must not exceed 10MB');
@@ -70,7 +70,7 @@ describe('validateUpload', () => {
 });
 
 describe('assertValid', () => {
-  it('ném ValidationError với code CLIENT_VALIDATION khi có lỗi', () => {
+  it('throws ValidationError with code CLIENT_VALIDATION when there are errors', () => {
     expect(() => assertValid({ amount: 'must be positive' }, 'Invalid claim')).toThrow(ValidationError);
     try {
       assertValid({ amount: 'must be positive' }, 'Invalid claim');
@@ -80,7 +80,7 @@ describe('assertValid', () => {
     }
   });
 
-  it('không ném gì khi không có lỗi', () => {
+  it('throws nothing when there are no errors', () => {
     expect(() => assertValid({}, 'Invalid claim')).not.toThrow();
   });
 });

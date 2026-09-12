@@ -11,15 +11,15 @@ async function main(): Promise<void> {
     amount: 3200,
     currency: 'THB',
   });
-  console.log(`Đang theo dõi ${claim.id}, bắt đầu ở ${claim.status}`);
+  console.log(`Watching ${claim.id}, starting at ${claim.status}`);
 
   await new Promise<void>((resolve) => {
     const stop = sdk.claims.onStatusChange(
       claim.id,
       (status, updated) => {
-        console.log(`   ${new Date().toISOString()}  ${claim.id} chuyển sang ${status}`);
+        console.log(`   ${new Date().toISOString()}  ${claim.id} moved to ${status}`);
         if (status === 'APPROVED' || status === 'REJECTED') {
-          console.log(`   Lịch sử: ${updated.statusHistory.map((entry) => entry.status).join(' → ')}`);
+          console.log(`   History: ${updated.statusHistory.map((entry) => entry.status).join(' -> ')}`);
           stop();
           resolve();
         }
@@ -28,12 +28,12 @@ async function main(): Promise<void> {
         intervalMs: 1000,
         initialStatus: claim.status,
         maxDurationMs: 60_000,
-        onError: (error) => console.warn(`   Lỗi khi poll, sẽ thử lại: ${describeError(error)}`),
+        onError: (error) => console.warn(`   Polling failed, will retry: ${describeError(error)}`),
       },
     );
   });
 
-  console.log('Đã có quyết định cuối, watcher đã dừng và script thoát.');
+  console.log('Final decision reached, the watcher stopped and the script exits.');
 }
 
 main().catch((error: unknown) => {

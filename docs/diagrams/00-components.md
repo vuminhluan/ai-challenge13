@@ -1,12 +1,12 @@
-# Tổng thể các thành phần
+# Component overview
 
-Sequence diagram trong thư mục này mô tả thứ tự theo thời gian. Sơ đồ dưới đây bổ sung phần còn thiếu: các lớp có những gì và phụ thuộc vào nhau ra sao.
+The sequence diagrams in this folder describe ordering in time. The diagram below fills in what they cannot show: which pieces exist and how they depend on each other.
 
 ```mermaid
 graph TD
-    Partner["Ứng dụng đối tác"]
+    Partner["Partner application"]
 
-    subgraph SDK["packages/sdk — không có runtime dependency"]
+    subgraph SDK["packages/sdk — zero runtime dependencies"]
         Client["InsuranceSDK<br/>client.ts"]
         Claims["ClaimsResource<br/>resources/claims.ts"]
         Docs["DocumentsResource<br/>resources/documents.ts"]
@@ -18,16 +18,16 @@ graph TD
         Multipart["buildMultipart<br/>core/multipart.ts"]
         Transport["NodeHttpTransport<br/>core/transport.ts"]
         Clock["Clock<br/>core/clock.ts"]
-        Errors["Cây lỗi<br/>errors.ts"]
+        Errors["Error hierarchy<br/>errors.ts"]
     end
 
     subgraph Server["packages/mock-server"]
-        Chaos["chaos.ts<br/>delay, 503 ngẫu nhiên, hook ép status"]
-        Router["router.ts<br/>khớp route, xác thực JWT"]
+        Chaos["chaos.ts<br/>latency, random 503, forced-status hook"]
+        Router["router.ts<br/>route matching, JWT verification"]
         Handlers["handlers/<br/>auth, claims, documents"]
-        FileContent["file-content.ts<br/>magic bytes + hàm quét mockup"]
-        Lifecycle["lifecycle.ts<br/>tính trạng thái theo tuổi claim"]
-        Store["store.ts<br/>Map trong bộ nhớ"]
+        FileContent["file-content.ts<br/>magic bytes plus stubbed scan"]
+        Lifecycle["lifecycle.ts<br/>status derived from claim age"]
+        Store["store.ts<br/>in-memory Maps"]
     end
 
     Partner --> Client
@@ -55,9 +55,9 @@ graph TD
     Handlers --> Store
 ```
 
-## Đọc gì từ sơ đồ này
+## What to take away
 
-- **Mọi request đều đi qua đúng một chỗ.** `RequestPipeline` là nơi duy nhất biết về token, retry, idempotency và map lỗi. Resource chỉ lo dựng request và kiểm tra dữ liệu, `Transport` chỉ lo gửi byte.
-- **`Clock` được ba nơi dùng chung.** Nhờ inject được nó, test kiểm tra backoff và polling mà không phải chờ thật một giây nào.
-- **`Transport` là ranh giới thay thế được.** Unit test cắm `FakeTransport` vào đây để dựng 503, lỗi mạng hay token hết hạn một cách chính xác.
-- **Chaos nằm trước router.** Vì thế một response 503 không bao giờ để lại tác dụng phụ, và retry của client luôn an toàn.
+- **Every request funnels through one place.** `RequestPipeline` is the only component that knows about tokens, retries, idempotency and error mapping. Resources only build requests and validate input; `Transport` only moves bytes.
+- **Three components share one `Clock`.** Because it is injectable, the tests exercise backoff and polling without ever waiting a real second.
+- **`Transport` is the substitution boundary.** Unit tests plug a `FakeTransport` in here to reproduce a 503, a socket failure or an expired token exactly.
+- **Chaos sits in front of the router.** That is why a 503 response never leaves a side effect behind, which in turn is what makes client retries safe.

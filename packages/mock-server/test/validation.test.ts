@@ -12,11 +12,11 @@ const VALID = {
 };
 
 describe('validateCreateClaim', () => {
-  it('không báo lỗi với body hợp lệ', () => {
+  it('reports no errors for a valid body', () => {
     expect(validateCreateClaim(VALID, NOW)).toEqual({});
   });
 
-  it('báo tất cả field bắt buộc còn thiếu', () => {
+  it('reports every missing required field', () => {
     expect(validateCreateClaim({}, NOW)).toEqual({
       policyId: 'required',
       claimType: 'required',
@@ -27,28 +27,28 @@ describe('validateCreateClaim', () => {
     });
   });
 
-  it('bắt lỗi định dạng policyId', () => {
+  it('catches a malformed policyId', () => {
     expect(validateCreateClaim({ ...VALID, policyId: '123' }, NOW).policyId).toBe('must match POL-<digits>');
   });
 
-  it('bắt lỗi claimType ngoài danh sách', () => {
+  it('catches a claimType outside the enum', () => {
     expect(validateCreateClaim({ ...VALID, claimType: 'SURGERY' }, NOW).claimType).toContain('must be one of');
   });
 
-  it('bắt lỗi mã ICD-10 sai định dạng', () => {
+  it('catches a malformed ICD-10 code', () => {
     expect(validateCreateClaim({ ...VALID, diagnosisCode: 'j069' }, NOW).diagnosisCode).toBe('must be a valid ICD-10 code');
   });
 
-  it('bắt lỗi ngày điều trị trong tương lai', () => {
+  it('catches a treatment date in the future', () => {
     expect(validateCreateClaim({ ...VALID, treatmentDate: '2024-06-02' }, NOW).treatmentDate).toBe('must not be in the future');
   });
 
-  it('bắt lỗi số tiền không dương và quá 2 chữ số thập phân', () => {
+  it('catches a non-positive amount and more than 2 decimal places', () => {
     expect(validateCreateClaim({ ...VALID, amount: 0 }, NOW).amount).toBe('must be positive');
     expect(validateCreateClaim({ ...VALID, amount: 10.123 }, NOW).amount).toBe('must have at most 2 decimal places');
   });
 
-  it('bắt lỗi đơn vị tiền tệ không hỗ trợ', () => {
+  it('catches an unsupported currency', () => {
     expect(validateCreateClaim({ ...VALID, currency: 'XYZ' }, NOW).currency).toContain('must be one of');
   });
 });

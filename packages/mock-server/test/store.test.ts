@@ -18,18 +18,18 @@ describe('Store', () => {
     store = new Store();
   });
 
-  it('sinh ID claim tuần tự có padding', () => {
+  it('assigns sequential padded claim ids', () => {
     expect(store.createClaim('pk_test_a', INPUT, NOW).id).toBe('CLM-000001');
     expect(store.createClaim('pk_test_a', INPUT, NOW).id).toBe('CLM-000002');
   });
 
-  it('claim của đối tác này thì đối tác khác không đọc được', () => {
+  it('one partner cannot read a claim owned by another partner', () => {
     const claim = store.createClaim('pk_test_a', INPUT, NOW);
     expect(store.getClaim('pk_test_a', claim.id)).toBeDefined();
     expect(store.getClaim('pk_test_b', claim.id)).toBeUndefined();
   });
 
-  it('listClaims chỉ trả claim của đúng đối tác, mới nhất trước', () => {
+  it('listClaims returns only claims owned by that partner, newest first', () => {
     store.createClaim('pk_test_a', INPUT, NOW);
     store.createClaim('pk_test_b', INPUT, NOW);
     const second = store.createClaim('pk_test_a', INPUT, NOW + 1000);
@@ -38,7 +38,7 @@ describe('Store', () => {
     expect(list[0]?.id).toBe(second.id);
   });
 
-  it('lưu và đọc lại được document theo claim', () => {
+  it('stores and reads documents back per claim', () => {
     const claim = store.createClaim('pk_test_a', INPUT, NOW);
     const doc = store.addDocument(claim.id, { type: 'medical_receipt', filename: 'r.pdf', contentType: 'application/pdf', size: 120 }, NOW);
     expect(doc.id).toBe('DOC-000001');
@@ -46,7 +46,7 @@ describe('Store', () => {
     expect(store.listDocuments('CLM-999999')).toEqual([]);
   });
 
-  it('idempotency record tách biệt theo từng API key', () => {
+  it('idempotency records are scoped per API key', () => {
     store.setIdempotent('pk_test_a', 'key-1', { bodyHash: 'h1', status: 201, response: { id: 'CLM-000001' } });
     expect(store.getIdempotent('pk_test_a', 'key-1')?.bodyHash).toBe('h1');
     expect(store.getIdempotent('pk_test_b', 'key-1')).toBeUndefined();

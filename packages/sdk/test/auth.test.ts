@@ -13,20 +13,20 @@ const makeManager = (expiresInMs = 3_600_000) => {
 };
 
 describe('AuthManager', () => {
-  it('lần đầu thì đi lấy token', async () => {
+  it('fetches a token on the first call', async () => {
     const { manager, requestToken } = makeManager();
     expect((await manager.getToken()).accessToken).toBe('token-1');
     expect(requestToken).toHaveBeenCalledTimes(1);
   });
 
-  it('lần sau dùng lại token đã cache', async () => {
+  it('reuses the cached token afterwards', async () => {
     const { manager, requestToken } = makeManager();
     await manager.getToken();
     await manager.getToken();
     expect(requestToken).toHaveBeenCalledTimes(1);
   });
 
-  it('refresh chủ động khi token còn dưới 60 giây', async () => {
+  it('refreshes proactively with under 60 seconds left', async () => {
     const { manager, requestToken, clock } = makeManager(120_000);
     await manager.getToken();
     clock.advance(61_000);
@@ -34,14 +34,14 @@ describe('AuthManager', () => {
     expect(requestToken).toHaveBeenCalledTimes(2);
   });
 
-  it('nhiều lời gọi song song chỉ tạo một lần lấy token', async () => {
+  it('concurrent calls trigger a single token fetch', async () => {
     const { manager, requestToken } = makeManager();
     const tokens = await Promise.all([manager.getToken(), manager.getToken(), manager.getToken(), manager.getToken(), manager.getToken()]);
     expect(requestToken).toHaveBeenCalledTimes(1);
     expect(new Set(tokens.map((token) => token.accessToken)).size).toBe(1);
   });
 
-  it('invalidate đúng epoch thì lần sau lấy token mới', async () => {
+  it('invalidating the current epoch forces a fresh token next time', async () => {
     const { manager, requestToken } = makeManager();
     const token = await manager.getToken();
     manager.invalidate(token.epoch);
@@ -49,7 +49,7 @@ describe('AuthManager', () => {
     expect(requestToken).toHaveBeenCalledTimes(2);
   });
 
-  it('invalidate với epoch cũ thì không xoá token mới', async () => {
+  it('invalidating a stale epoch does not discard the newer token', async () => {
     const { manager, requestToken } = makeManager();
     const first = await manager.getToken();
     manager.invalidate(first.epoch);
@@ -60,14 +60,14 @@ describe('AuthManager', () => {
     expect(requestToken).toHaveBeenCalledTimes(2);
   });
 
-  it('lấy token thất bại thì không giữ lại promise hỏng', async () => {
+  it('a failed token fetch does not leave a broken promise cached', async () => {
     const clock = new FakeClock();
     const requestToken = vi
       .fn()
-      .mockRejectedValueOnce(new Error('server bận'))
+      .mockRejectedValueOnce(new Error('server busy'))
       .mockResolvedValueOnce({ accessToken: 'token-ok', expiresAtMs: clock.now() + 3_600_000 });
     const manager = new AuthManager({ requestToken, clock });
-    await expect(manager.getToken()).rejects.toThrow('server bận');
+    await expect(manager.getToken()).rejects.toThrow('server busy');
     expect((await manager.getToken()).accessToken).toBe('token-ok');
   });
 });

@@ -1,7 +1,7 @@
 import type { Clock } from '../src/core/clock.js';
 import type { Transport, TransportRequest, TransportResponse } from '../src/core/transport.js';
 
-/** Clock giả: thời gian chỉ nhích khi test gọi advance, sleep không chờ thật. */
+/** Fake clock: time only moves when the test calls advance, and sleep never really waits. */
 export class FakeClock implements Clock {
   readonly sleeps: number[] = [];
   private current: number;
@@ -25,10 +25,10 @@ export class FakeClock implements Clock {
   }
 }
 
-/** Một phản hồi đã lập trình sẵn cho FakeTransport. */
+/** A pre-programmed reply for FakeTransport. */
 export type FakeReply = TransportResponse | Error;
 
-/** Transport giả: trả về lần lượt các phản hồi đã nạp và ghi lại mọi request. */
+/** Fake transport: returns queued replies in order and records every request. */
 export class FakeTransport implements Transport {
   readonly requests: TransportRequest[] = [];
   private replies: FakeReply[] = [];
@@ -41,13 +41,13 @@ export class FakeTransport implements Transport {
   async send(request: TransportRequest): Promise<TransportResponse> {
     this.requests.push(request);
     const reply = this.replies.shift();
-    if (reply === undefined) throw new Error(`FakeTransport hết phản hồi cho ${request.method} ${request.url}`);
+    if (reply === undefined) throw new Error(`FakeTransport ran out of replies for ${request.method} ${request.url}`);
     if (reply instanceof Error) throw reply;
     return reply;
   }
 }
 
-/** Tạo nhanh một TransportResponse dạng JSON. */
+/** Builds a JSON TransportResponse quickly. */
 export function jsonReply(status: number, payload: unknown, headers: Record<string, string> = {}): TransportResponse {
   return { status, headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(payload) };
 }

@@ -10,7 +10,7 @@ const transport = new NodeHttpTransport();
 beforeAll(async () => {
   server = createServer((req, res) => {
     if (req.url === '/slow') {
-      setTimeout(() => res.end('muộn'), 2000);
+      setTimeout(() => res.end('late'), 2000);
       return;
     }
     const chunks: Buffer[] = [];
@@ -22,7 +22,7 @@ beforeAll(async () => {
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
-  if (address === null || typeof address === 'string') throw new Error('không lấy được port');
+  if (address === null || typeof address === 'string') throw new Error('could not read the port');
   baseUrl = `http://127.0.0.1:${address.port}`;
 });
 
@@ -31,7 +31,7 @@ afterAll(async () => {
 });
 
 describe('NodeHttpTransport', () => {
-  it('gửi body JSON và header rồi đọc được response', async () => {
+  it('sends a JSON body with headers and reads the response back', async () => {
     const res = await transport.send({
       method: 'POST',
       url: `${baseUrl}/echo`,
@@ -46,19 +46,19 @@ describe('NodeHttpTransport', () => {
     expect(payload.auth).toBe('Bearer abc');
   });
 
-  it('quá timeout thì ném TimeoutError', async () => {
+  it('throws TimeoutError past the timeout', async () => {
     await expect(
       transport.send({ method: 'GET', url: `${baseUrl}/slow`, headers: {}, timeoutMs: 100 }),
     ).rejects.toBeInstanceOf(TimeoutError);
   });
 
-  it('không kết nối được thì ném NetworkError', async () => {
+  it('throws NetworkError when the host is unreachable', async () => {
     await expect(
       transport.send({ method: 'GET', url: 'http://127.0.0.1:1/unreachable', headers: {}, timeoutMs: 2000 }),
     ).rejects.toBeInstanceOf(NetworkError);
   });
 
-  it('bị abort thì ném NetworkError có code REQUEST_ABORTED', async () => {
+  it('throws NetworkError with code REQUEST_ABORTED when aborted', async () => {
     const controller = new AbortController();
     const promise = transport.send({ method: 'GET', url: `${baseUrl}/slow`, headers: {}, timeoutMs: 5000, signal: controller.signal });
     controller.abort();
@@ -67,7 +67,7 @@ describe('NodeHttpTransport', () => {
 });
 
 describe('systemClock', () => {
-  it('sleep bị abort thì reject', async () => {
+  it('rejects when the sleep is aborted', async () => {
     const { systemClock } = await import('../src/core/clock.js');
     const controller = new AbortController();
     const promise = systemClock.sleep(5000, controller.signal);
