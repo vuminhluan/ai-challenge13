@@ -4,6 +4,13 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "dependencies": { "busboy": "^1.6.0" },
-  "devDependencies": { "@types/busboy": "^1.5.4" }
+  "dependencies": {
+    "busboy": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/busboy": "^1.5.4"
+  },
+  "exports": {
+    "./src/*": "./src/*"
+  }
 }

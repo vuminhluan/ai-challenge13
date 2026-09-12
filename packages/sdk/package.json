@@ -19,6 +19,7 @@
     "build": "tsup src/index.ts --format esm,cjs --dts --clean"
   },
   "devDependencies": {
-    "tsup": "^8.5.1"
+    "tsup": "^8.5.1",
+    "@insurance/mock-server": "workspace:*"
   }
 }
