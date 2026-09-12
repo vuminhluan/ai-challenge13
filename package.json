@@ -14,9 +14,13 @@
     "example:3": "tsx examples/03-poll-status.ts"
   },
   "devDependencies": {
+    "@types/busboy": "^1.5.4",
     "@types/node": "^22.10.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"
+  },
+  "dependencies": {
+    "busboy": "^1.6.0"
   }
 }

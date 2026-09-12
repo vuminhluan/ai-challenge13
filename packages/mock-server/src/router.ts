@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { handleToken } from './handlers/auth.js';
 import { handleCreateClaim, handleGetClaim, handleListClaims } from './handlers/claims.js';
+import { handleListDocuments, handleUploadDocument } from './handlers/documents.js';
 import { sendError } from './http.js';
 import { verifyToken } from './jwt.js';
 import type { ServerConfig } from './server.js';
@@ -33,6 +34,21 @@ export async function route(req: IncomingMessage, res: ServerResponse, config: S
   }
 
   const claimMatch = /^\/api\/v1\/claims\/([^/]+)$/.exec(url.pathname);
+  const documentMatch = /^\/api\/v1\/claims\/([^/]+)\/documents$/.exec(url.pathname);
+
+  if (method === 'POST' && documentMatch !== null) {
+    const auth = authenticate(req, res, config);
+    if (auth === undefined) return;
+    await handleUploadDocument(req, res, config, auth, documentMatch[1] as string);
+    return;
+  }
+
+  if (method === 'GET' && documentMatch !== null) {
+    const auth = authenticate(req, res, config);
+    if (auth === undefined) return;
+    handleListDocuments(res, config, auth, documentMatch[1] as string);
+    return;
+  }
 
   if (method === 'POST' && url.pathname === '/api/v1/claims') {
     const auth = authenticate(req, res, config);

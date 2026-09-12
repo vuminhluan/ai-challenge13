@@ -7,7 +7,14 @@ settings:
 importers:
 
   .:
+    dependencies:
+      busboy:
+        specifier: ^1.6.0
+        version: 1.6.0
     devDependencies:
+      '@types/busboy':
+        specifier: ^1.5.4
+        version: 1.5.4
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.2
