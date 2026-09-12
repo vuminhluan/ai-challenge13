@@ -164,6 +164,8 @@ packages/sdk/           SDK, không có runtime dependency nào
 packages/mock-server/   Mock API dựng trên node:http, chỉ dùng busboy để parse multipart
 examples/               Ba script tích hợp chạy được ngay
 docs/api-reference.md   Tài liệu tham chiếu đầy đủ
+docs/diagrams/          Sơ đồ kiến trúc và sơ đồ tuần tự các luồng chính
 ```
 
-Tài liệu chi tiết từng phương thức: [docs/api-reference.md](docs/api-reference.md).
+- Tài liệu chi tiết từng phương thức: [docs/api-reference.md](docs/api-reference.md)
+- Muốn nắm nhanh cách các thành phần tương tác: [docs/diagrams/](docs/diagrams/README.md)
